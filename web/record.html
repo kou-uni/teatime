@@ -1,0 +1,147 @@
+<!doctype html><html lang="ja"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>teatime</title>
+<style>
+:root{--bg:#fbfaf7;--fg:#1d1b17;--mut:#6d675d;--line:#e2ddd2;--accent:#8a6a3b;--card:#fff}
+@media (prefers-color-scheme:dark){:root{--bg:#16150f;--fg:#ece7dc;--mut:#9d968a;
+--line:#322e26;--accent:#c9a46a;--card:#1e1c15}}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{margin:0;background:var(--bg);color:var(--fg);font-family:-apple-system,
+"Hiragino Sans","Noto Sans JP",sans-serif;display:flex;flex-direction:column;
+min-height:100svh;align-items:center;justify-content:center;padding:24px;text-align:center}
+h1{font-size:19px;font-weight:650;margin:0 0 4px;letter-spacing:.02em}
+.sub{color:var(--mut);font-size:13px;margin-bottom:40px;line-height:1.7}
+button#go{width:196px;height:196px;border-radius:50%;border:1px solid var(--line);
+background:var(--card);color:var(--fg);font:inherit;font-size:19px;font-weight:650;
+box-shadow:0 1px 3px rgba(0,0,0,.06);transition:.2s}
+button#go:active{transform:scale(.97)}
+body[data-s=rec] button#go{border-color:var(--accent);color:var(--accent)}
+body[data-s=rec] button#go::after{content:"";display:block;width:9px;height:9px;
+border-radius:50%;background:var(--accent);margin:12px auto 0;animation:p 1.6s infinite}
+@keyframes p{0%,100%{opacity:1}50%{opacity:.25}}
+#t{font-variant-numeric:tabular-nums;font-size:31px;margin-top:26px;min-height:40px;
+letter-spacing:.04em}
+#msg{color:var(--mut);font-size:13px;margin-top:18px;line-height:1.7;max-width:340px}
+#prog{display:none;width:100%;max-width:360px;margin:22px auto 0;text-align:left}
+#prog .row{display:flex;align-items:center;gap:10px;padding:7px 2px;font-size:14px;
+color:var(--mut);border-bottom:1px solid var(--line)}
+#prog .row:last-child{border-bottom:0}
+#prog .ic{flex:0 0 18px;height:18px;border-radius:50%;border:1.5px solid var(--line);
+display:grid;place-items:center;font-size:11px}
+#prog .row.done{color:var(--fg)}
+#prog .row.done .ic{border-color:var(--accent);color:var(--accent)}
+#prog .row.run{color:var(--fg);font-weight:650}
+#prog .row.run .ic{border-color:var(--accent);border-top-color:transparent;
+animation:spin .9s linear infinite}
+#prog .row.fail .ic{border-color:#a63d33;color:#a63d33}
+#prog .sec{margin-left:auto;font-size:11px;color:var(--mut);font-variant-numeric:tabular-nums}
+@keyframes spin{to{transform:rotate(360deg)}}
+#found{display:none;margin:16px auto 0;max-width:360px;font-size:12px;color:var(--mut);
+border-top:1px solid var(--line);padding-top:12px;line-height:1.9;text-align:left}
+.links{display:none;margin-top:20px;display:none;gap:10px;flex-direction:column;width:100%;
+max-width:360px}
+.links a{display:block;padding:13px;border-radius:4px;text-decoration:none;font-weight:650}
+.links a.primary{background:var(--accent);color:#fff}
+.links a.ghost{border:1px solid var(--line);color:var(--fg)}
+.foot{position:fixed;bottom:22px;color:var(--mut);font-size:11px;padding:0 20px}
+</style></head><body data-s="idle">
+<h1>teatime</h1>
+<div class="sub">タップで録音がはじまります。<br>終わったらもう一度タップして、席を外してください。</div>
+<button id="go">はじめる</button>
+<div id="t"></div><div id="msg"></div>
+<div id="prog"></div>
+<div id="found"></div>
+<div class="links" id="links">
+  <a class="primary" id="rep" href="#">できたものを見る</a>
+  <a class="ghost" id="proto" href="#">プロトタイプを触る</a>
+</div>
+<div class="foot">議論の記録だけから作ります。記録に無いことは「未入力」と出ます。</div>
+<script>
+let mr, chunks=[], t0, tick, stream;
+const $=(i)=>document.getElementById(i), go=$('go'), msg=$('msg'), rep=$('rep');
+const prog=$('prog'), found=$('found'), links=$('links'), proto=$('proto');
+let t1=0, bump=null;
+const fmt=(s)=>`${String(Math.floor(s/60)).padStart(2,'0')}:${String(s%60).padStart(2,'0')}`;
+
+go.onclick = async () => {
+  if (document.body.dataset.s === 'rec') return stop();
+  if (document.body.dataset.s === 'busy') return;
+  try {
+    stream = await navigator.mediaDevices.getUserMedia({audio:{
+      echoCancellation:false, noiseSuppression:false, autoGainControl:true}});
+  } catch (e) { msg.textContent = 'マイクが使えません（'+e.name+'）。HTTPS で開いているか確認してください。'; return; }
+  chunks=[];
+  const mime = ['audio/mp4','audio/webm;codecs=opus','audio/webm'].find(m=>MediaRecorder.isTypeSupported(m));
+  mr = new MediaRecorder(stream, mime?{mimeType:mime}:undefined);
+  mr.ondataavailable = e => e.data.size && chunks.push(e.data);
+  mr.onstop = send;
+  mr.start(4000);
+  t0 = Date.now(); document.body.dataset.s='rec'; go.textContent='おわる';
+  msg.textContent='録音中。画面は見なくて大丈夫です。';
+  tick = setInterval(()=>$('t').textContent=fmt(Math.floor((Date.now()-t0)/1000)), 500);
+};
+
+function stop(){ clearInterval(tick); mr.stop(); stream.getTracks().forEach(t=>t.stop());
+  document.body.dataset.s='busy'; go.textContent='お茶へ'; }
+
+async function send(){
+  const blob = new Blob(chunks, {type: mr.mimeType||'audio/mp4'});
+  const ext = (mr.mimeType||'').includes('webm') ? 'webm' : 'm4a';
+  msg.textContent='送っています…（'+Math.round(blob.size/1024)+'KB）';
+  const fd = new FormData(); fd.append('audio', blob, 'rec.'+ext);
+  let r;
+  try { r = await (await fetch('/upload', {method:'POST', body:fd})).json(); }
+  catch(e){ msg.textContent='送れませんでした: '+e.message; document.body.dataset.s='idle';
+            go.textContent='はじめる'; return; }
+  msg.textContent='お茶をどうぞ。席を外して大丈夫です。';
+  prog.style.display='block'; t1=Date.now();
+  bump=setInterval(()=>{const e=prog.querySelector('.row.run .sec');
+    if(e) e.textContent=fmt(Math.floor((Date.now()-t1)/1000));}, 1000);
+  poll(r.id);
+}
+
+let lastRun='';
+function draw(steps){
+  prog.innerHTML = steps.map(s=>{
+    const ic = s.state==='done'?'✓' : s.state==='fail'?'!' : '';
+    const sec = s.state==='done'&&s.sec ? fmt(s.sec) : '';
+    return `<div class="row ${s.state}"><div class="ic">${ic}</div>`+
+           `<div>${s.label}</div><div class="sec">${sec}</div></div>`;
+  }).join('');
+  const run = steps.find(s=>s.state==='run');
+  if (run && run.key!==lastRun){ lastRun=run.key; t1=Date.now(); }
+}
+
+function drawFound(r){
+  const bits=[];
+  if (r.chars) bits.push('文字起こし '+r.chars+'字');
+  if (r.topic) bits.push('主題: '+r.topic);
+  if (r.abandonments!==undefined) bits.push('放棄点 '+r.abandonments+
+    '（理由が言葉になっていない '+r.unverbalized+'）');
+  if (r.gaps!==undefined) bits.push('埋めるべき空白 '+r.gaps);
+  if (r.assumptions!==undefined) bits.push('仮置き '+r.assumptions);
+  if (!bits.length) return;
+  found.style.display='block'; found.innerHTML = bits.map(b=>'・'+b).join('<br>');
+}
+
+async function poll(id){
+  let r; try { r = await (await fetch('/status?id='+id)).json(); }
+  catch(e){ return setTimeout(()=>poll(id), 4000); }
+  if (r.steps) draw(r.steps);
+  drawFound(r);
+
+  if (r.state === 'done'){
+    clearInterval(bump);
+    msg.textContent='できました。';
+    rep.href=r.url; proto.href=r.proto||'#';
+    proto.style.display = r.proto ? 'block':'none';
+    links.style.display='flex';
+    document.body.dataset.s='idle'; go.textContent='もう一度'; $('t').textContent='';
+    return;
+  }
+  if (r.state === 'error'){ clearInterval(bump);
+    msg.textContent='しくじりました: '+r.error;
+    document.body.dataset.s='idle'; go.textContent='はじめる'; return; }
+  setTimeout(()=>poll(id), 2000);
+}
+</script></body></html>
