@@ -18,6 +18,8 @@ import time
 import traceback
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
+from . import archive
+
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 OUT = ROOT / "out"
 WEB = ROOT / "web"
@@ -151,6 +153,8 @@ class H(BaseHTTPRequestHandler):
         if path in ("/", "/index.html"):
             return self._send(200, (WEB / "record.html").read_bytes(),
                               "text/html; charset=utf-8")
+        if path in ("/archive", "/archive.html"):
+            return self._send(200, archive.page(OUT), "text/html; charset=utf-8")
         if path == "/status":
             q = dict(p.split("=", 1) for p in self.path.split("?", 1)[-1].split("&") if "=" in p)
             return self._send(200, json.dumps(JOBS.get(q.get("id"), {"state": "unknown"})))
