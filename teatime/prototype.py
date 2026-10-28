@@ -251,6 +251,26 @@ def _clean(text, drop_tags=True):
     return t.strip()
 
 
+def _one_primary(markup):
+    """**主ボタンは1つ。** [P01 一つの動詞を中心に置く]
+
+    モデルに直させると、動いていた流れごと作り直して悪化する（実測 score -2 → -16）。
+    **機械的に直せるものは機械で直す。** 最初の1つを残し、残りは副操作（btn2）に落とす。
+    """
+    seen = [False]
+
+    def demote(m):
+        classes = m.group(1).split()
+        if "btn" not in classes:
+            return m.group(0)
+        if not seen[0]:
+            seen[0] = True
+            return m.group(0)
+        return 'class="' + " ".join("btn2" if c == "btn" else c for c in classes) + '"'
+
+    return re.sub(r'class="([^"]*)"', demote, markup)
+
+
 def _jp_file(markup):
     """**ファイル選択の「Choose File」はCSSで変えられない。** 素の input を隠し、
     label をこちら側で書いて日本語のボタンにする。モデルの書き方に依存しない。"""
@@ -358,9 +378,9 @@ def refine(report, markup, mvp, assemble, on_step=None):
         if on_step:
             on_step(f"refine{i}")
         try:
-            new_markup = _jp_file(_clean(model.ask(
+            new_markup = _one_primary(_jp_file(_clean(model.ask(
                 MARKUP_SYS, FIX_PROMPT.format(
-                    failures=failures, markup=best["markup"], mvp=mvp))))
+                    failures=failures, markup=best["markup"], mvp=mvp)))))
             new_page = assemble(new_markup)
             new_report = uxcheck.check(new_page)
         except Exception as error:
