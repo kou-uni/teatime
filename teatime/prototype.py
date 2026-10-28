@@ -16,6 +16,7 @@ LLM には中身だけを短く2回に分けて書かせる。**
 """
 import html as _h
 import json
+import os
 import pathlib
 import re
 import shutil
@@ -274,6 +275,86 @@ def _js_check(js):
     return "ng", (out.stderr or out.stdout).strip()[:800]
 
 
+FIX_PROMPT = """この画面は、機械の試験に落ちました。**落ちた所だけを直してください。**
+
+## 落ちた観点
+{failures}
+
+## いまの画面
+```html
+{markup}
+```
+
+## 直し方の規則
+- **構造で直す。** 「追加」「登録」「保存」「足す」のどれかを**文字として含むボタン**を置く。
+  一覧は `<ul>` `<ol>` `<tbody>` のどれかにする。日付が要るなら `<input type="date">`。
+- **押して何も起きないボタンを作らない。** 押したら一覧か文言が**目に見えて変わる**こと。
+- 画面の目的（{mvp}）を変えない。**落ちた所だけ**を直す。
+- 使ってよい class は card row col btn btn2 mut tag big field のみ。
+
+**HTML（画面の中身）だけ**を2500字以内で。説明を書かない。
+"""
+
+
+def _score(report):
+    """**試験の良し悪しを1つの数にする。** skip は「その構造が無い」なので減点。"""
+    s = (report or {}).get("summary") or {}
+    return s.get("pass", 0) * 2 - s.get("fail", 0) * 3 - s.get("skip", 0)
+
+
+def _failures(report):
+    """落ちた観点と理由を、モデルに渡せる形にする。**pass は渡さない。**"""
+    from . import uxcheck
+    lines = []
+    for key in uxcheck.IDS:
+        c = (report.get("checks") or {}).get(key)
+        if c and c["status"] in ("fail", "skip"):
+            lines.append(f'- {uxcheck.LABELS[key]}（{c["status"]}）: '
+                         + " ".join(c["reason"].split())[:160])
+    return "\n".join(lines)
+
+
+def _rounds():
+    """**既定は1回だけ直す。** 直すたびに生成が1本増えるので、際限なく回さない。"""
+    try:
+        return max(0, min(3, int(os.environ.get("TEATIME_REFINE", "1"))))
+    except ValueError:
+        return 1
+
+
+def refine(report, markup, mvp, assemble, on_step=None):
+    """**作って終わりにしない。** 落ちた観点をモデルに返して作り直し、また測る。
+    **良くなったときだけ採る**ので、直そうとして悪くなることが無い。"""
+    from . import uxcheck
+    best = {"markup": markup, "report": report, "score": _score(report)}
+    history = [{"round": 0, "score": best["score"],
+                "summary": dict((report or {}).get("summary") or {})}]
+    for i in range(1, _rounds() + 1):
+        failures = _failures(best["report"])
+        if not failures:
+            break  # **落ちていないなら触らない**
+        if on_step:
+            on_step(f"refine{i}")
+        try:
+            new_markup = _jp_file(_clean(model.ask(
+                MARKUP_SYS, FIX_PROMPT.format(
+                    failures=failures, markup=best["markup"], mvp=mvp))))
+            new_page = assemble(new_markup)
+            new_report = uxcheck.check(new_page)
+        except Exception as error:
+            history.append({"round": i, "error": type(error).__name__})
+            break
+        new_score = _score(new_report)
+        history.append({"round": i, "score": new_score,
+                        "summary": dict(new_report.get("summary") or {}),
+                        "採用": new_score > best["score"]})
+        if new_score > best["score"]:
+            best = {"markup": new_markup, "report": new_report, "score": new_score}
+        else:
+            break  # **良くならなかったら、そこで止める**
+    return best, history
+
+
 def build(transcript, structured, on_step=None):
     d = structured.get("decision") or {}
     sacrificed = "、".join(
@@ -322,14 +403,19 @@ def build(transcript, structured, on_step=None):
         js, js_check = "", "failed"
 
     topic = structured.get("topic", "")
-    page = (
-        '<!doctype html><html lang="ja"><head><meta charset="utf-8">'
-        '<meta name="viewport" content="width=device-width,initial-scale=1">'
-        f"<title>{_h.escape(mvp)[:40]}</title><style>{CSS}</style></head><body>"
-        f'<header>プロトタイプ ・ 議論「{_h.escape(topic)}」から生成</header>'
-        f"<main>{markup}</main>"
-        + _sheet(assumptions)
-        + f"<script>{js}\n{SHEET_JS}</script></body></html>")
+
+    def assemble(body):
+        # **組み立ては1か所。** refine が同じ手で作り直せるようにする
+        return (
+            '<!doctype html><html lang="ja"><head><meta charset="utf-8">'
+            '<meta name="viewport" content="width=device-width,initial-scale=1">'
+            f"<title>{_h.escape(mvp)[:40]}</title><style>{CSS}</style></head><body>"
+            f'<header>プロトタイプ ・ 議論「{_h.escape(topic)}」から生成</header>'
+            f"<main>{body}</main>"
+            + _sheet(assumptions)
+            + f"<script>{js}\n{SHEET_JS}</script></body></html>")
+
+    page = assemble(markup)
     if on_step:
         on_step("uxcheck")
     try:
@@ -339,6 +425,10 @@ def build(transcript, structured, on_step=None):
         # **成果物は出す。試験の障害は隠さない。**
         report = {"checks": {}, "summary": {"fail": 0, "pass": 0, "skip": 0},
                   "execution": {"complete": False, "障害": type(error).__name__}}
+    # **落ちたまま出さない。** 落ちた観点を返して作り直し、良くなったときだけ採る
+    best, history = refine(report, markup, mvp, assemble, on_step)
+    markup, report, page = best["markup"], best["report"], assemble(best["markup"])
+
     return {"mvp": mvp, "assumptions": assumptions, "html": page,
             "markup_chars": len(markup), "js_chars": len(js),
-            "js_check": js_check, "ux": report}
+            "js_check": js_check, "ux": report, "refine": history}
