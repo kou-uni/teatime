@@ -114,44 +114,72 @@ JS_FIX_PROMPT = """
 """
 
 CSS = """
-:root{--bg:#fbfaf7;--fg:#1d1b17;--mut:#6d675d;--line:#e2ddd2;--ac:#8a6a3b;--card:#fff}
-@media(prefers-color-scheme:dark){:root{
---bg:#16150f;--fg:#ece7dc;--mut:#9d968a;--line:#322e26;--ac:#c9a46a;--card:#1e1c15}}
-*{box-sizing:border-box}
-body{margin:0;background:var(--bg);color:var(--fg);font-size:16px;line-height:1.7;
-font-family:-apple-system,"Hiragino Sans","Noto Sans JP",sans-serif}
-main{max-width:560px;margin:0 auto;padding:14px 14px 110px}
-header{max-width:560px;margin:0 auto;padding:16px 14px 6px;color:var(--mut);font-size:11.5px;
-letter-spacing:.1em}
-h1{font-size:20px;margin:.2em 0 .5em}h2{font-size:16px;margin:1.2em 0 .4em}
-h3{font-size:14px;margin:1em 0 .3em;color:var(--ac)}
-.card{background:var(--card);border:1px solid var(--line);border-radius:6px;
-padding:14px 16px;margin:12px 0}
-.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
-.col{display:flex;flex-direction:column;gap:6px}
-.mut{color:var(--mut);font-size:13px}.big{font-size:26px;font-weight:650}
-.tag{display:inline-block;font-size:11px;letter-spacing:.1em;color:var(--ac);
-border:1px solid var(--line);border-radius:2px;padding:2px 7px}
-input,textarea,select,.field{font:inherit;color:var(--fg);background:var(--bg);
-border:1px solid var(--line);border-radius:5px;padding:9px 11px;width:100%}
-button,.btn{font:inherit;background:var(--fg);color:var(--bg);border:0;border-radius:5px;
-padding:10px 16px;cursor:pointer}
-.btn2{background:transparent;color:var(--fg);border:1px solid var(--line)}
-ul{padding-left:1.1em}li{margin:.3em 0}
-table{width:100%;border-collapse:collapse;font-size:13.5px}
-th,td{text-align:left;padding:7px 6px;border-bottom:1px solid var(--line);vertical-align:top}
-#fab{position:fixed;right:14px;bottom:18px;z-index:9;background:var(--ac);color:#fff;
-border-radius:999px;padding:12px 18px;font-size:13.5px;border:0;
-box-shadow:0 2px 10px rgba(0,0,0,.18);cursor:pointer}
-#sheet{position:fixed;inset:0;z-index:10;background:rgba(0,0,0,.35);display:none}
-#sheet.on{display:block}
-#sheet>div{position:absolute;left:0;right:0;bottom:0;max-height:86vh;overflow:auto;
-background:var(--bg);border-top:1px solid var(--line);
-border-radius:14px 14px 0 0;padding:18px 16px 28px}
-#sheet h2{margin:0 0 4px}
-.as{border-top:1px solid var(--line);padding:11px 0}
-.as b{font-weight:650}.as .why{color:var(--mut);font-size:13px}
-.hi{color:#b3261e}@media(prefers-color-scheme:dark){.hi{color:#f2b8b5}}
+:root{color-scheme:light dark;--paper:#f4f1ea;--ink:#23201c;--muted:#6f6a60;--rule:#ded8c9;--red:#9b3b2f;--read:"Hiragino Mincho ProN","Yu Mincho",YuMincho,"Noto Serif JP",serif;--ui:-apple-system,"Hiragino Sans","Yu Gothic","Noto Sans JP",sans-serif}
+@media(prefers-color-scheme:dark){:root{--paper:#14130f;--ink:#e9e4d8;--muted:#948d80;--rule:#2e2a23;--red:#d08477}}
+*{box-sizing:border-box;border-radius:0!important;letter-spacing:normal}
+*::before,*::after,input::file-selector-button{border-radius:0!important}
+body,h1,h2,h3,h4,p,ul,ol,dl,dd,blockquote,pre,fieldset{margin:0}
+*+*{margin-top:16px}
+body{margin:0;background:var(--paper);color:var(--ink);font:16px/1.6 var(--ui);overflow-wrap:anywhere;-webkit-text-size-adjust:100%}
+body>header,main{width:100%;max-width:704px;margin-inline:auto;padding:32px}
+body>header{padding-bottom:16px;color:var(--muted);font-size:12px;border-bottom:1px solid var(--rule)}
+main{margin-top:0;padding-bottom:64px}
+body{padding-bottom:64px}
+h1{font:400 32px/1.3 var(--read)}
+h2,.big{font-size:24px;font-weight:650;line-height:1.5}
+h3{font-size:20px}h4{font-size:17px}
+strong,b{font-weight:650}
+main>:is(div,section,article,form)+:is(div,section,article,form){margin-top:64px}
+.card,blockquote{background:none;border:0;padding:0}
+.row{display:flex;flex-wrap:wrap;align-items:center;gap:16px}
+.col{display:flex;flex-direction:column;gap:16px}
+.row>*,.col>*{margin-top:0;min-width:0;max-width:100%}
+.row>input:not([type=radio]):not([type=checkbox]){flex:1 1 100%}
+.row>.btn{flex:1 1 100%}
+.row>.btn2{flex:0 1 auto}
+.mut,.tag{color:var(--muted);font-size:14px}.tag{font-size:12px}
+ul,ol{padding-left:32px}li+li{margin-top:8px}
+dt{font-weight:650}dd{margin-top:4px}
+fieldset{min-width:0;padding:0;border:0}legend{padding:0;font-weight:650}
+label{display:block}label>input,label>select,label>textarea{margin-top:8px}
+pre{white-space:pre-wrap;overflow-wrap:anywhere}pre,code,kbd,samp{font-family:var(--ui);font-size:14px}
+img,video,canvas,svg{max-width:100%;height:auto}
+table{width:100%;table-layout:fixed;border-collapse:collapse;font:14px/1.6 var(--ui)}
+th,td{padding:8px;text-align:left;vertical-align:top;border-bottom:1px solid var(--rule)}
+th{font-weight:650}caption{text-align:left;margin-bottom:8px}
+a{display:inline-flex;align-items:center;min-width:44px;min-height:44px;padding:8px 0;color:inherit;text-underline-offset:4px;touch-action:manipulation}
+/* 入力は薄い沈み。新しい色や影は増やさない。 */
+input,textarea,select,.field{display:block;width:100%;max-width:100%;min-width:44px;min-height:44px;font:inherit;color:var(--ink);padding:8px 16px;border:0;border-bottom:1px solid var(--muted);background:color-mix(in srgb,var(--ink) 4%,var(--paper))}
+textarea{resize:vertical}input::placeholder,textarea::placeholder{color:var(--muted);opacity:1}
+input:is([type=radio],[type=checkbox]){appearance:none;display:inline-block;width:44px;height:44px;padding:8px;margin:0;vertical-align:middle;border:1px solid var(--ink);background:var(--paper);flex-shrink:0;cursor:pointer}
+input[type=radio]:checked::before,input[type=checkbox]:checked::before{content:"✓";display:block;text-align:center;color:var(--ink);font:650 20px/1.3 var(--ui)}
+/* 押すものは墨の面。副操作は下罫、選ぶものは囲み。 */
+button,[role=button],input[type=submit],input[type=button],input[type=reset],.btn,.btn2,input::file-selector-button{display:inline-flex;align-items:center;justify-content:center;width:auto;min-width:44px;min-height:44px;max-width:100%;padding:8px 16px;border:1px solid var(--ink);background:var(--ink);color:var(--paper);font:inherit;cursor:pointer;text-decoration:none;text-align:center;touch-action:manipulation;white-space:normal}
+.btn2{background:none;color:var(--ink);border:0;border-bottom:2px solid var(--ink);padding:8px 0}
+label:has(input[type=radio]),label:has(input[type=checkbox]),select,summary,[role=option],.row:has(>.btn2~.btn2)>.btn2,label.btn2{min-width:44px;min-height:44px;padding:8px 16px;border:1px solid var(--ink);background:var(--paper);color:var(--ink);cursor:pointer}
+label:has(input[type=radio]),label:has(input[type=checkbox]){display:flex;align-items:center;gap:8px}
+label:has(input[type=radio])>*,label:has(input[type=checkbox])>*{margin-top:0}
+summary{display:list-item}option{background:var(--paper);color:var(--ink)}
+.row:has(>.btn2~.btn2)>.btn2{flex:1 1 100%;justify-content:flex-start;text-align:left}
+:where(button,input,textarea,select,a,summary,[tabindex],[role=button]):focus-visible{outline:2px solid var(--ink);outline-offset:4px}
+:disabled,[aria-disabled=true]{cursor:not-allowed;text-decoration:line-through}
+/* 状態名が変わっても反転は同じ。sheet の on は開閉専用。 */
+:is(.active,.on,.selected,.is-active,[aria-pressed="true"],[aria-selected="true"],[data-selected],input:checked+*,label:has(input:checked)):not(#sheet){background:var(--ink);color:var(--paper);border-color:var(--ink)}
+:where(p,li,td) a{display:inline!important;min-width:0!important;min-height:0!important;padding:0!important}
+/* 空の操作部品や入力欄は消さず、空の入れ物だけ潰す。 */
+:where(div,section,article,aside,nav,header,footer,main,p,ul,ol,dl,pre,blockquote,fieldset,output):empty:not([role]):not([contenteditable]){display:none!important}
+[hidden],input[type=hidden]{display:none!important}
+#fab{position:fixed;right:16px;bottom:16px;z-index:9;margin:0;min-width:44px;min-height:44px;padding:8px 16px;background:var(--ink);color:var(--paper);font-size:14px}
+#sheet{display:none;position:fixed;inset:0;z-index:10;margin:0;background:color-mix(in srgb,var(--ink) 32%,transparent);color:var(--ink)}
+#sheet.on{display:block}body:has(#sheet.on){overflow:hidden}
+#sheet>div{position:absolute;right:0;top:0;bottom:0;width:min(704px,100%);margin:0;padding:0 32px 32px;overflow-y:auto;overscroll-behavior:contain;background:var(--paper);border-left:1px solid var(--rule)}
+#sheet .sheet-head{position:sticky;top:0;z-index:1;display:flex;align-items:center;justify-content:space-between;gap:16px;margin:0;padding:16px 0;background:var(--paper);border-bottom:1px solid var(--rule)}
+#sheet .sheet-head>*{margin:0}#sheet h2{font-family:var(--read);font-weight:400}
+#sclose{border:0;border-bottom:2px solid var(--ink);background:none;color:var(--ink);padding:8px 0;flex-shrink:0}
+.as{margin-top:32px}.as>b{display:block;font:400 22px/1.6 var(--read)}
+.as .why{color:var(--muted);font-size:14px}
+.hi,.risk,.blank{color:var(--red)}.hi{font-family:var(--ui);font-size:14px;font-variant-emoji:text}
+@media(max-width:640px){body>header,main{padding:16px}main{padding-bottom:64px}h1{font-size:28px}.big{font-size:24px}#sheet>div{padding:0 16px 32px}}
 """
 
 SHEET_JS = """
@@ -162,25 +190,27 @@ document.getElementById('sheet').classList.remove('on')};
 
 
 def _sheet(assumptions):
+    # **外れると作り直す前提から読む。** 元の一覧は変更しない。
+    ordered = sorted(assumptions, key=lambda a: a.get("risk") != "high")
     rows = []
-    for a in assumptions:
-        hi = (a.get("risk") == "high")
+    for a in ordered:
+        hi = a.get("risk") == "high"
         rows.append(
             '<div class="as">'
-            f'<b>{"<span class=hi>⚑ </span>" if hi else ""}'
-            f'{_h.escape(str(a.get("gap", "")))}</b>'
+            + ('<p class="hi">&#9873;&#65038; 高リスク</p>' if hi else '')
+            + f'<b>{_h.escape(str(a.get("gap", "")))}</b>'
             f'<div>→ {_h.escape(str(a.get("assumption", "")))}</div>'
             f'<div class="why">なぜ: {_h.escape(str(a.get("why", "")))}'
             f'<br>確かめ方: {_h.escape(str(a.get("how_to_check", "")))}</div></div>')
-    n = len(assumptions)
+    n = len(ordered)
     return (
-        f'<button id="fab">仮置き {n}</button>'
-        '<div id="sheet"><div><h2>仮置き</h2>'
+        f'<button id="fab" type="button" aria-controls="sheet">仮置き {n}</button>'
+        '<div id="sheet"><div role="region" aria-labelledby="sheet-title">'
+        '<div class="sheet-head"><h2 id="sheet-title">仮置き</h2>'
+        '<button id="sclose" class="btn2" type="button">閉じる</button></div>'
         '<p class="mut">議論で決まっていないこと。作るために、いまは仮にこうしてあります。'
-        '<span class="hi">⚑</span> は外れると作り直しになるもの。</p>'
-        + "".join(rows)
-        + '<p style="margin-top:18px"><button id="sclose" class="btn2">閉じる</button></p>'
-          '</div></div>')
+        '<span class="hi">&#9873;&#65038; 高リスク</span> は外れると作り直しになるもの。</p>'
+        + "".join(rows) + '</div></div>')
 
 
 def _clean(text, drop_tags=True):

@@ -1,67 +1,95 @@
-<!doctype html><html lang="ja"><head><meta charset="utf-8">
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>teatime</title>
+<title>teatime — 議論の記録</title>
 <style>
-:root{--bg:#fbfaf7;--fg:#1d1b17;--mut:#6d675d;--line:#e2ddd2;--accent:#8a6a3b;--card:#fff}
-@media (prefers-color-scheme:dark){:root{--bg:#16150f;--fg:#ece7dc;--mut:#9d968a;
---line:#322e26;--accent:#c9a46a;--card:#1e1c15}}
-*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-body{margin:0;background:var(--bg);color:var(--fg);font-family:-apple-system,
-"Hiragino Sans","Noto Sans JP",sans-serif;display:flex;flex-direction:column;
-min-height:100svh;align-items:center;justify-content:center;padding:24px;text-align:center}
-h1{font-size:19px;font-weight:650;margin:0 0 4px;letter-spacing:.02em}
-.sub{color:var(--mut);font-size:13px;margin-bottom:40px;line-height:1.7}
-button#go{width:196px;height:196px;border-radius:50%;border:1px solid var(--line);
-background:var(--card);color:var(--fg);font:inherit;font-size:19px;font-weight:650;
-box-shadow:0 1px 3px rgba(0,0,0,.06);transition:.2s}
-button#go:active{transform:scale(.97)}
-body[data-s=rec] button#go{border-color:var(--accent);color:var(--accent)}
-body[data-s=rec] button#go::after{content:"";display:block;width:9px;height:9px;
-border-radius:50%;background:var(--accent);margin:12px auto 0;animation:p 1.6s infinite}
-@keyframes p{0%,100%{opacity:1}50%{opacity:.25}}
-#t{font-variant-numeric:tabular-nums;font-size:31px;margin-top:26px;min-height:40px;
-letter-spacing:.04em}
-#msg{color:var(--mut);font-size:13px;margin-top:18px;line-height:1.7;max-width:340px}
-#prog{display:none;width:100%;max-width:360px;margin:22px auto 0;text-align:left}
-#prog .row{display:flex;align-items:center;gap:10px;padding:7px 2px;font-size:14px;
-color:var(--mut);border-bottom:1px solid var(--line)}
-#prog .row:last-child{border-bottom:0}
-#prog .ic{flex:0 0 18px;height:18px;border-radius:50%;border:1.5px solid var(--line);
-display:grid;place-items:center;font-size:11px}
-#prog .row.done{color:var(--fg)}
-#prog .row.done .ic{border-color:var(--accent);color:var(--accent)}
-#prog .row.run{color:var(--fg);font-weight:650}
-#prog .row.run .ic{border-color:var(--accent);border-top-color:transparent;
-animation:spin .9s linear infinite}
-#prog .row.fail .ic{border-color:#a63d33;color:#a63d33}
-#prog .sec{margin-left:auto;font-size:11px;color:var(--mut);font-variant-numeric:tabular-nums}
-@keyframes spin{to{transform:rotate(360deg)}}
-#found{display:none;margin:16px auto 0;max-width:360px;font-size:12px;color:var(--mut);
-border-top:1px solid var(--line);padding-top:12px;line-height:1.9;text-align:left}
-.links{display:none;margin-top:20px;display:none;gap:10px;flex-direction:column;width:100%;
-max-width:360px}
-.links a{display:block;padding:13px;border-radius:4px;text-decoration:none;font-weight:650}
-.links a.primary{background:var(--accent);color:#fff}
-.links a.ghost{border:1px solid var(--line);color:var(--fg)}
-#x{display:none;margin:18px auto 0;background:none;border:0;color:var(--mut);
-font:inherit;font-size:13px;text-decoration:underline;padding:8px 14px}
-body[data-s=rec] #x,body[data-s=busy] #x{display:inline-block}
-#x.arm{color:#a63d33;text-decoration:none;border:1px solid #a63d33;border-radius:4px}
-#prog .row.cancel{text-decoration:line-through}
-.foot{position:fixed;bottom:22px;color:var(--mut);font-size:11px;padding:0 20px}
-</style></head><body data-s="idle">
-<h1>teatime</h1>
-<div class="sub">タップで録音がはじまります。<br>終わったらもう一度タップして、席を外してください。</div>
-<button id="go">はじめる</button>
-<div id="t"></div><div id="msg"></div>
-<button id="x">やめる（残さない）</button>
-<div id="prog"></div>
-<div id="found"></div>
-<div class="links" id="links">
-  <a class="primary" id="rep" href="#">できたものを見る</a>
-  <a class="ghost" id="proto" href="#">プロトタイプを触る</a>
+:root{color-scheme:light dark;--paper:#f4f1ea;--ink:#23201c;--muted:#6f6a60;--rule:#ded8c9;--red:#9b3b2f;--read:"Hiragino Mincho ProN","Yu Mincho",YuMincho,"Noto Serif JP",serif;--ui:-apple-system,"Hiragino Sans","Yu Gothic","Noto Sans JP",sans-serif}
+@media(prefers-color-scheme:dark){:root{--paper:#14130f;--ink:#e9e4d8;--muted:#948d80;--rule:#2e2a23;--red:#d08477}}
+*{box-sizing:border-box;border-radius:0}
+body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--ui);font-size:16px;line-height:1.6;letter-spacing:normal}
+h1,p{margin:0}h1{font-family:var(--read);font-size:32px;font-weight:400;line-height:1.6}
+a{color:inherit}button,a{touch-action:manipulation}button{font:inherit;cursor:pointer}
+button:focus-visible,a:focus-visible{outline:2px solid var(--ink);outline-offset:4px}
+.page{width:100%;max-width:704px;min-height:100svh;margin:0 auto;padding:32px;display:flex;flex-direction:column}
+.masthead{display:flex;justify-content:space-between;align-items:baseline;gap:16px;padding-bottom:16px;border-bottom:1px solid var(--rule);color:var(--muted);font-size:12px}
+.brand{color:var(--ink);font-size:24px;letter-spacing:.04em}
+.main{flex:1;display:flex;flex-direction:column;justify-content:center;align-items:stretch;gap:16px;padding:32px 0}
+.eyebrow{font-size:12px;color:var(--muted);margin-bottom:8px}
+.sub,.hint,#msg{font-size:14px;color:var(--muted);text-align:left;overflow-wrap:anywhere}
+.sub{margin-top:8px}.hint{width:100%}
+.state-rec,.state-busy,.state-done{display:none}
+#go{display:flex;flex-direction:column;align-items:center;justify-content:center;align-self:center;flex-shrink:0;width:176px;height:176px;border:0;border-radius:50%;background:var(--ink);color:var(--paper);font-size:22px}
+#t{display:none;align-self:center;font-size:32px;font-variant-numeric:tabular-nums;letter-spacing:.04em;line-height:1.5}
+#msg:empty{display:none}
+#x{display:none;align-self:flex-start;min-width:44px;min-height:44px;padding:8px 0;border:0;border-bottom:2px solid var(--ink);background:none;color:var(--ink);font-size:13px}
+#x.arm{color:var(--red);border-bottom-color:var(--red)}
+#prog{display:none;width:100%}
+#prog .row{display:flex;align-items:center;gap:8px;min-height:32px;padding:4px 0 4px 8px;border-left:2px solid var(--rule);color:var(--muted);font-size:13px;line-height:1.5}
+#prog .row>div:nth-child(2){order:0;flex:1;min-width:0;overflow-wrap:anywhere}
+/* JS の記号を状態語に替える。 */
+#prog .ic{order:1;flex:0 0 40px;font-size:0}
+#prog .ic::after{content:"未着手";font-size:11px}
+#prog .sec{order:2;flex:0 0 36px;text-align:right;font-size:11px;color:var(--muted);font-variant-numeric:tabular-nums}
+#prog .row.done{color:var(--ink)}#prog .row.done .ic::after{content:"済み"}
+#prog .row.run{border-left-color:var(--ink);color:var(--ink);font-weight:650}
+#prog .row.run .ic::after{content:"作成中"}
+#prog .row.fail{border-left-color:var(--red);color:var(--red)}#prog .row.fail .ic::after{content:"失敗"}
+#prog .row.cancel .ic::after{content:"中止"}#prog .row.cancel>div:nth-child(2){text-decoration:line-through}
+#found{display:none;font-size:12px;line-height:1.6;color:var(--muted);overflow-wrap:anywhere}
+.links{display:none;flex-direction:column;align-items:flex-start;gap:16px}
+a.primary,a.ghost{min-height:44px;min-width:44px;padding:8px 0;font-size:15px;font-weight:650;text-decoration:none}
+a.primary{width:100%;padding:16px;background:var(--ink);color:var(--paper);text-align:center}
+a.ghost{border-bottom:2px solid var(--ink)}
+.foot{border-top:1px solid var(--rule);padding-top:8px;color:var(--muted);font-size:11px}
+.foot a{display:inline-flex;align-items:center;min-height:44px;min-width:44px;font-size:13px;text-decoration:none;border-bottom:2px solid var(--ink)}
+.foot p{margin-top:8px}
+body[data-s=rec] .state-idle,body[data-s=busy] .state-idle{display:none}
+body[data-s=rec] .state-rec,body[data-s=busy] .state-busy{display:block}
+body[data-s=rec] #t{display:block}body[data-s=rec] #t:empty::before{content:"00:00"}
+body[data-s=rec] #go::after{content:"";width:8px;height:8px;margin-top:16px;background:var(--paper);clip-path:circle(50%);animation:pulse 1.6s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.25}}
+body[data-s=rec] #x,body[data-s=busy] #x{display:block}
+body[data-s=busy] .main{justify-content:flex-start;gap:8px;padding:16px 0}
+body[data-s=busy] #go,body[data-s=busy] .hint{display:none}
+body[data-s=busy] #x{order:5}
+/* 既存 JS は完了後も idle。リンク表示を完了の目印にする。 */
+body:is([data-s=done],[data-s=idle]:has(#links[style*="flex"])) .state-idle{display:none}
+body:is([data-s=done],[data-s=idle]:has(#links[style*="flex"])) .state-done{display:block}
+body:is([data-s=done],[data-s=idle]:has(#links[style*="flex"])) #prog,
+body:is([data-s=done],[data-s=idle]:has(#links[style*="flex"])) .hint{display:none!important}
+body:is([data-s=done],[data-s=idle]:has(#links[style*="flex"])) #go{order:6;width:96px;height:96px;font-size:16px}
+body[data-s=done] #links{display:flex}
+@media(max-width:640px){.page{padding:16px}h1{font-size:26px}.main{padding:32px 0}.eyebrow{margin-bottom:4px}}
+@media(max-width:640px){body[data-s=busy] .masthead{padding-bottom:8px}body[data-s=busy] .main{gap:4px;padding:8px 0}body[data-s=busy] #prog .row{min-height:28px}body[data-s=busy] #found{font-size:11px}body[data-s=busy] .foot p{margin-top:4px}}
+@media(prefers-reduced-motion:reduce){body[data-s=rec] #go::after{animation:none}}
+</style>
+</head>
+<body data-s="idle">
+<div class="page">
+<header class="masthead"><span class="brand">teatime</span><span>茶の時間</span></header>
+<main class="main">
+<section class="intro">
+<p class="eyebrow">議論の記録</p>
+<h1><span class="state-idle">話す時間を、そのまま。</span><span class="state-rec">話を、続けてください。</span><span class="state-busy">形にしています。</span><span class="state-done">できました。</span></h1>
+<p class="sub state-idle">タップで録音がはじまります。<br>スマホを机に置いて、お話しください。</p>
+<p class="sub state-done">議論からできたものを、<br>ゆっくりご覧ください。</p>
+</section>
+<div id="t" aria-label="録音の経過時間"></div>
+<button id="go" type="button">はじめる</button>
+<p class="hint"><span class="state-idle">終わったら、もう一度タップ。</span><span class="state-rec">終わったら「おわる」を押して、席を外してください。</span></p>
+<div id="msg" role="status" aria-live="polite"></div>
+<button id="x" type="button">やめる（残さない）</button>
+<div id="prog" aria-label="作成の工程"></div>
+<div id="found" aria-label="ここまでに見つかったもの"></div>
+<nav class="links" id="links" aria-label="できたもの">
+<a class="primary" id="rep" href="#">できたものを見る</a>
+<a class="ghost" id="proto" href="#">プロトタイプを触る</a>
+</nav>
+</main>
+<footer class="foot"><a href="/archive">これまでの議論を見る</a><p>議論の記録だけから作ります。<br>記録に無いことは「未入力」と出ます。</p></footer>
 </div>
-<div class="foot"><a href="/archive" style="color:inherit">これまでの議論を見る</a><br>議論の記録だけから作ります。記録に無いことは「未入力」と出ます。</div>
 <script>
 let mr, chunks=[], t0, tick, stream;
 const $=(i)=>document.getElementById(i), go=$('go'), msg=$('msg'), rep=$('rep');
