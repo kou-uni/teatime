@@ -5,8 +5,9 @@ teatime が独自に持つのはここ。議事録でも要約でもなく、
 → ~/Obsidian/ThoughtLog/concepts/teatime-what-to-measure.md
 """
 import json
+import sys
 
-from . import model
+from . import model, taste
 
 SYSTEM = (
     "あなたは、議論の録音の文字起こしを渡された分析者です。"
@@ -88,6 +89,52 @@ def extract(transcript):
         "rebuilt": sum(1 for r in data.get("ranking_source", [])
                        if r.get("type") == "rebuilt"),
     }
+    # **taste が止まっても、既存の抽出は渡す。** 未測定を0件に見せない。
+    metrics = data["metrics"]
+    metrics.update({f"taste_{key}": None for key in (
+        "evidence", "kind4", "coverage_ratio", "deterministic",
+        "verbatim_failures", "reversed_control")})
+    try:
+        analysis = taste.analyze(transcript)
+        evidence = analysis["primary"]["evidence"]
+        tm = analysis["primary"]["metrics"]
+        additions = []
+        for event in evidence:
+            if (event["decided_by"] != "deterministic" or event["tan_kind"] != 4
+                    or event["detector"] not in {"label_refusal", "register_collision"}):
+                continue
+            # **共起だけから価値名を補わない。** 改名先か観測したレジスタを使う。
+            value = event["taken"] or " / ".join(event["register"]["frame"])
+            if value:
+                additions.append({"value": value, "type": "rebuilt",
+                                  "cue": event["quote"], "source": "taste"})
+        taste_metrics = {
+            "taste_evidence": len(evidence),
+            "taste_kind4": sum(e["tan_kind"] == 4 for e in evidence),
+            "taste_coverage_ratio": tm["coverage_ratio"],
+            "taste_deterministic": tm["decided_by_deterministic"],
+            "taste_verbatim_failures": tm["verbatim_failures"],
+            "taste_reversed_control": tm["reversed_control"],
+        }
+    except Exception as exc:
+        error = taste.failure("taste", exc)
+        data["taste"] = {"status": "failed", "error": error}
+        print(error, file=sys.stderr, flush=True)
+    else:
+        data["taste"] = analysis
+        ranking_source = data.setdefault("ranking_source", [])
+        # **モデルの項目を消さない。** 同じ価値・種別・引用の追記だけを畳む。
+        def key(item):
+            return tuple("".join(str(item.get(k) or "").split()) for k in ("value", "type", "cue"))
+        seen = {key(item) for item in ranking_source}
+        for item in additions:
+            if key(item) not in seen:
+                ranking_source.append(item)
+                seen.add(key(item))
+        metrics.update(taste_metrics)
+        metrics["rebuilt"] = sum(r.get("type") == "rebuilt" for r in ranking_source)
+        for warning in analysis.get("warnings", []):
+            print(f"taste: {warning}", file=sys.stderr, flush=True)
     return data
 
 

@@ -16,7 +16,7 @@ from . import model
 
 
 URL = "http://teatime.invalid/prototype.html"
-IDS = tuple(f"M{i}" for i in range(1, 10)) + ("L1", "L2", "L3")
+IDS = tuple(f"M{i}" for i in range(1, 10)) + ("G1", "G2") + ("L1", "L2", "L3")
 LABELS = {
     "M1": "押して何も起きないボタンが無い",
     "M2": "押した結果が逆になっていない",
@@ -27,6 +27,8 @@ LABELS = {
     "M7": "仮置きの一覧が開いて閉じる",
     "M8": "コンソールにエラーが無い",
     "M9": "古い日付・今日でない既定値が無い",
+    "G1": "押した瞬間に見た目が変わる",
+    "G2": "主ボタンが1つに絞れている",
     "L1": "議論に無い中身を作っていない",
     "L2": "決めたことと矛盾していない",
     "L3": "最初の1手が分かる",
@@ -747,6 +749,45 @@ def _check_m7(run):
                        [{"initial": initial, "opened": opened, "closed": closed}])
 
 
+def _check_g1(run):
+    """**押した瞬間に見た目が変わるか。** 処理の開始を演出待ちにしない（80-120ms）。
+    枠が与えているので普通は pass する。落ちるのは枠が壊れたとき。"""
+    with run.fresh("G1") as state:
+        page = state.page
+        targets = [t for t in _targets(page, BUTTONS) if not t["disabled"]]
+        if not targets:
+            return _result("skip", "押せるものが無い")
+        locator = page.locator(targets[0]["selector"])
+        locator.scroll_into_view_if_needed()
+        box = locator.bounding_box()
+        if not box:
+            return _result("skip", "矩形を取得できない")
+        style = "e=>{const s=getComputedStyle(e);return s.transform+'|'+s.opacity}"
+        rest = locator.evaluate(style)
+        page.mouse.move(box["x"] + box["width"] / 2, box["y"] + box["height"] / 2)
+        page.mouse.down()
+        page.wait_for_timeout(120)
+        pressed = locator.evaluate(style)
+        page.mouse.up()
+        changed = pressed != rest
+        return _result("pass" if changed else "fail",
+                       "押下で見た目が変わる" if changed else "押しても見た目が変わらない",
+                       [{"selector": targets[0]["selector"], "rest": rest, "pressed": pressed}])
+
+
+def _check_g2(run):
+    """**主要行動を1つに絞れているか。** 入口で迷わせない（P01）。
+    墨で塗った主ボタンが0個なら押す先が分からず、2個以上なら絞れていない。"""
+    with run.fresh("G2") as state:
+        page = state.page
+        n = page.evaluate("""()=>[...document.querySelectorAll('main .btn')].filter(
+         e=>!e.closest('#sheet') && !!e.getClientRects().length &&
+         getComputedStyle(e).visibility!=='hidden').length""")
+        if n == 1:
+            return _result("pass", "主ボタンは1つ", [{"主ボタン": n}])
+        return _result("fail", f"主ボタンが{n}個（1つに絞る）", [{"主ボタン": n}])
+
+
 def _check_m8(run):
     errors = sum(not error["blocked"] for error in run.errors)
     blocked = sum(error["blocked"] for error in run.errors)
@@ -977,7 +1018,8 @@ def check(html: str, *, transcript=None, structured=None, assumptions=None,
                 if checks["M4"]["status"] != "pass":
                     checks["M5"] = _result("skip", "M4 非 pass のため未実施")
                 for key, function in (("M6", _check_m6), ("M7", _check_m7),
-                                      ("M9", _check_m9)):
+                                      ("M9", _check_m9),
+                                      ("G1", _check_g1), ("G2", _check_g2)):
                     checks[key] = _safe(run, key, lambda f=function: f(run))
                 checks["M8"] = _check_m8(run)
                 if language and language_reason is None:
@@ -988,7 +1030,7 @@ def check(html: str, *, transcript=None, structured=None, assumptions=None,
                 browser.close()
     except Exception as error:
         coverage.append({"check": "browser", "障害": type(error).__name__})
-        for key in IDS[:9]:
+        for key in IDS[:11]:
             if checks[key]["reason"] == "ブラウザ未起動":
                 checks[key] = _result("skip", "ブラウザ起動・実行障害: " + type(error).__name__)
     report = _summarize(checks, coverage)

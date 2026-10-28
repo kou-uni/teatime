@@ -15,7 +15,7 @@ import urllib.request
 
 from PIL import Image, ImageDraw, ImageFont
 
-from . import model
+from . import deliver, model
 
 W, H = 1920, 1080
 BG, FG, MUT, ACC = (251, 250, 247), (29, 27, 23), (109, 103, 93), (138, 106, 59)
@@ -54,7 +54,7 @@ PROMPT = """次の分析から、**5〜7枚**の解説動画の台本を作っ�
 
 
 def script(structured, docs):
-    core = json.dumps({"structured": structured,
+    core = json.dumps({"structured": deliver.for_document(structured),
                        "feedback": next((d["text"] for d in docs
                                          if d["key"] == "feedback"), "")},
                       ensure_ascii=False)

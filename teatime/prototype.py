@@ -23,7 +23,7 @@ import shutil
 import subprocess
 import tempfile
 
-from . import model
+from . import deliver, model
 
 ASSUME_SYS = (
     "あなたは、議論の記録と抽出結果を渡されて、**作り始めるために必要な仮置き**を決める人です。"
@@ -184,6 +184,14 @@ main{padding-bottom:88px}
 #sclose{border:0;border-bottom:2px solid var(--ink);background:none;color:var(--ink);padding:8px 0;flex-shrink:0}
 .as{margin-top:32px}.as>b{display:block;font:400 22px/1.6 var(--read)}
 .as .why{color:var(--muted);font-size:14px}
+/* 押した瞬間に見た目が変わる（80-120ms）。処理の開始を演出待ちにしない。[P02] */
+:is(button,[role=button],input[type=submit],input[type=button],.btn,.btn2,summary,.filepick,label:has(input[type=radio]),label:has(input[type=checkbox])){transition:transform 160ms ease-out,opacity 160ms ease-out}
+:is(button,[role=button],input[type=submit],input[type=button],.btn,.btn2,summary,.filepick,label:has(input[type=radio]),label:has(input[type=checkbox])):active{transform:scale(.97);opacity:.84;transition-duration:90ms}
+/* 完了は局所的に、短く（300-500ms）。全画面を覆わない。毎回の紙吹雪はしない。[P02] */
+.done{display:inline-block;margin-top:8px;padding:4px 12px;background:var(--ink);color:var(--paper);font-size:13px;animation:done 320ms ease-out}
+@keyframes done{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+/* 動きを減らす設定では、意味を静止の文字で残す。[S24] */
+@media(prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
 .hi,.risk,.blank{color:var(--red)}.hi{font-family:var(--ui);font-size:14px;font-variant-emoji:text}
 @media(max-width:640px){body>header,main{padding:16px}main{padding-bottom:88px}h1{font-size:28px}.big{font-size:24px}#sheet>div{padding:0 16px 32px}}
 """
@@ -192,6 +200,18 @@ SHEET_JS = """
 document.getElementById('fab').onclick=()=>document.getElementById('sheet').classList.add('on');
 document.getElementById('sheet').onclick=e=>{if(e.target.id==='sheet'||e.target.id==='sclose')
 document.getElementById('sheet').classList.remove('on')};
+/* **押した→増えた→言う、を枠側で出す。** [P02 入力・処理・成功を分けて伝える]
+   モデルが完了表示を書き忘れても、一覧が増えたことは必ず言葉になる。
+   成功を祝う言葉にしない。どこに残ったかだけを言う。 */
+(()=>{let pressed=null;const q='li,tbody>tr';
+addEventListener('pointerdown',e=>{const b=e.target.closest(
+'button,[role=button],input[type=submit],.btn,.btn2');if(b&&!b.closest('#sheet'))pressed=b;},true);
+let before=document.querySelectorAll(q).length;
+new MutationObserver(()=>{const now=document.querySelectorAll(q).length;
+if(now>before&&pressed){const n=document.createElement('span');n.className='done';
+n.textContent='この端末に保存しました';const host=pressed.closest('form,.card')||pressed.parentNode;
+if(host&&!host.querySelector('.done'))host.appendChild(n);setTimeout(()=>n.remove(),2600);pressed=null;}
+before=now;},).observe(document.body,{childList:true,subtree:true});})();
 /* 選んだファイル名を出す。出さないと押した結果が分からない。 */
 document.querySelectorAll('.filepick input[type=file]').forEach(i=>i.onchange=()=>{
 const n=i.parentNode.querySelector('.filename');if(n)n.textContent=i.files[0]?i.files[0].name:'';});
@@ -288,7 +308,9 @@ FIX_PROMPT = """この画面は、機械の試験に落ちました。**落ち�
 ## 直し方の規則
 - **構造で直す。** 「追加」「登録」「保存」「足す」のどれかを**文字として含むボタン**を置く。
   一覧は `<ul>` `<ol>` `<tbody>` のどれかにする。日付が要るなら `<input type="date">`。
-- **押して何も起きないボタンを作らない。** 押したら一覧か文言が**目に見えて変わる**こと。
+- **押して何も起きないボタンを作らない。**
+- **主ボタン（class="btn"）は画面に1つだけ。** その画面で一番やりたい動詞を1つ選ぶ。
+  残りの操作は `class="btn2"` にする。入口で選ばせない。 押したら一覧か文言が**目に見えて変わる**こと。
 - 画面の目的（{mvp}）を変えない。**落ちた所だけ**を直す。
 - 使ってよい class は card row col btn btn2 mut tag big field のみ。
 
@@ -360,7 +382,7 @@ def build(transcript, structured, on_step=None):
     sacrificed = "、".join(
         f'{a.get("sacrificed_value") or "?"}→{a.get("gained_value") or "?"}'
         for a in structured.get("abandonments", [])) or "（放棄は記録されていない）"
-    core = json.dumps({"structured": structured, "transcript": transcript},
+    core = json.dumps({"structured": deliver.for_document(structured), "transcript": transcript},
                       ensure_ascii=False)
 
     if on_step:

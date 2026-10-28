@@ -63,7 +63,14 @@ body:is([data-s=done],[data-s=idle]:has(#links[style*="flex"])) #go{order:6;widt
 body[data-s=done] #links{display:flex}
 @media(max-width:640px){.page{padding:16px}h1{font-size:26px}.main{padding:32px 0}.eyebrow{margin-bottom:4px}}
 @media(max-width:640px){body[data-s=busy] .masthead{padding-bottom:8px}body[data-s=busy] .main{gap:4px;padding:8px 0}body[data-s=busy] #prog .row{min-height:28px}body[data-s=busy] #found{font-size:11px}body[data-s=busy] .foot p{margin-top:4px}}
-@media(prefers-reduced-motion:reduce){body[data-s=rec] #go::after{animation:none}}
+/* 押した瞬間に見た目が変わる（80-120ms）。一番大きいボタンに手応えが無いのは致命的。[P02] */
+#go,.links a,#x,.foot a{transition:transform 160ms ease-out,opacity 160ms ease-out}
+#go:active,.links a:active,#x:active,.foot a:active{transform:scale(.96);opacity:.86;transition-duration:90ms}
+/* 待っている6〜7分に、見つかったものを1件ずつ渡す。[P03 安全な小成功を先に渡す] */
+#found div{animation:found 360ms ease-out}
+@keyframes found{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+@media(prefers-reduced-motion:reduce){body[data-s=rec] #go::after,#found div{animation:none}
+#go,.links a,#x,.foot a{transition:none}}
 </style>
 </head>
 <body data-s="idle">
@@ -161,7 +168,14 @@ function drawFound(r){
   if (r.gaps!==undefined) bits.push('埋めるべき空白 '+r.gaps);
   if (r.assumptions!==undefined) bits.push('仮置き '+r.assumptions);
   if (!bits.length) return;
-  found.style.display='block'; found.innerHTML = bits.map(b=>'・'+b).join('<br>');
+  found.style.display='block';
+  // **増えた分だけ足す。** 毎回描き直すと、全部が点滅して何が新しいか分からない
+  const have = [...found.children].map(e=>e.textContent);
+  bits.forEach(b=>{ const line='・'+b;
+    if (have.includes(line)) return;
+    const old = [...found.children].find(e=>e.textContent.split(' ')[0]===line.split(' ')[0]);
+    if (old) { old.textContent = line; return; }
+    const d=document.createElement('div'); d.textContent=line; found.appendChild(d); });
 }
 
 // 「やっぱやめる」。誤タップで議論を失わないよう、2回押したときだけ捨てる

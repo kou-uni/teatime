@@ -26,6 +26,7 @@ CORE = """## この議論の核（抽出済み。ここを土台にすること�
 - **成り立つ条件**: {condition}
 - **手放した価値**: {sacrificed}
 - **議論が触れなかったこと（埋めない）**: {gaps}
+{persona}
 
 ## 抽出された構造（JSON）
 {structured}
@@ -52,6 +53,7 @@ DOCS = [
 **「手放した価値」から書く。** 「全部できます」は独自性ではない。
 *何をやらないと決めたか*が独自性。**他社が同じものを作れない理由**を1行で。
 根拠が議論に無ければ「**未入力（議論で出ていない）**」と書く。
+**この節だけ、持ち主の輪郭が渡されていればそれを骨にする。渡されていなければ『未入力（議論から1行に絞れなかった）』と書く。作文しない。**
 
 ## マネタイズ
 誰が、何に、いくら払うか。**議論に無ければ埋めずに「未入力」と書き、
@@ -122,6 +124,7 @@ DOCS = [
 
 **読者は、その場にいた本人たち。** 議事録は要らない（彼らはその場にいた）。
 返す価値があるのは、**自分たちでは見えないもの**だけ。
+**持ち主の輪郭が渡されていればそれを骨にする。渡されていなければ『未入力（議論から1行に絞れなかった）』と書く。作文しない。**
 
 ## スライド形式。`---` で区切り、1枚 = 見出し1行 + 3行以内。
 
@@ -142,6 +145,26 @@ DOCS = [
 ]
 
 
+def for_document(structured, *, persona=False):
+    """**一次資料を成果物へ流さない。** 元の抽出は変更しない。"""
+    result = {k: v for k, v in structured.items() if k != "taste"}
+    analysis = structured.get("taste") or {}
+    output = analysis.get("deliverable") or {}
+    # **反転の証拠・内部IDも渡さない。** 人に出す主張だけを許可する。
+    claims = {k: output[k] for k in ("line",) if output.get(k)}
+    if persona and (output.get("inversion_check") or {}).get("generic_risk") is False:
+        if output.get("persona_line"):
+            claims["persona_line"] = output["persona_line"]
+    if claims:
+        result["taste"] = {"deliverable": claims}
+    # **補強した引用を別の経路から漏らさない。**
+    if "ranking_source" in result:
+        result["ranking_source"] = [r for r in result["ranking_source"] if r.get("source") != "taste"]
+    if "metrics" in result:
+        result["metrics"] = {k: v for k, v in result["metrics"].items() if not k.startswith("taste_")}
+    return result
+
+
 def build(transcript, structured, keys=None, on_step=None):
     import json as _json
     d = structured.get("decision") or {}
@@ -149,20 +172,23 @@ def build(transcript, structured, keys=None, on_step=None):
         f'{a.get("sacrificed_value") or "（言葉になっていない）"}→{a.get("gained_value") or "?"}'
         for a in structured.get("abandonments", [])
     ) or "なし"
-    core = CORE.format(
-        adopted=d.get("adopted") or "**決まっていない**",
-        condition=d.get("condition") or "**決まっていない**",
-        sacrificed=sacrificed,
-        gaps="、".join(structured.get("gaps", [])) or "なし",
-        structured=_json.dumps(structured, ensure_ascii=False, indent=1),
-        transcript=transcript,
-    )
     out = []
     for doc in DOCS:
         if keys and doc["key"] not in keys:
             continue
         if on_step:
             on_step(doc["key"])
+        safe = for_document(structured, persona=doc["key"] in {"pitch", "feedback"})
+        line = ((safe.get("taste") or {}).get("deliverable") or {}).get("persona_line")
+        core = CORE.format(
+            adopted=d.get("adopted") or "**決まっていない**",
+            condition=d.get("condition") or "**決まっていない**",
+            sacrificed=sacrificed,
+            gaps="、".join(structured.get("gaps", [])) or "なし",
+            persona=f"- **この議論の持ち主の輪郭（1行）**: {line}" if line else "",
+            structured=_json.dumps(safe, ensure_ascii=False, indent=1),
+            transcript=transcript,
+        )
         text = model.ask(SYSTEM, doc["prompt"] + "\n\n---\n" + core)
         out.append({"key": doc["key"], "title": doc["title"], "text": text})
     return out

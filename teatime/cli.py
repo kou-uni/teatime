@@ -63,9 +63,15 @@ def tea(path, keys=None, video=False, out_dir=None):
         print(f"動画: {mp4}")
 
     m = structured["metrics"]
+    deterministic = sum(r.get("type") == "rebuilt" and r.get("source") == "taste"
+                        for r in structured.get("ranking_source", []))
+    ratio = m.get("taste_coverage_ratio")
+    coverage = f"{ratio:.1%}" if ratio is not None else "未算出"
     print(f'できました（{int(time.time()-t0)}秒）: {dest}')
     print(f'放棄点 {m["abandonments"]} / 理由が言葉になっていない {m["unverbalized"]} '
-          f'/ 空白 {len(structured.get("gaps", []))} / 仮置き {len(proto["assumptions"])}')
+          f'/ 空白 {len(structured.get("gaps", []))} / 仮置き {len(proto["assumptions"])} '
+          f'/ 序列の作り直し {m["rebuilt"]}（うち決定論 {deterministic}） '
+          f'/ taste被覆率 {coverage}')
     print(f'プロトタイプ: {out_dir / proto_name}')
     # **UX 試験は作る側が見るもの。** 成果物からは外したが、端末には出す
     counts = (proto.get("ux") or {}).get("summary")
