@@ -67,12 +67,12 @@ def tea(path, keys=None, video=False, out_dir=None):
     print(f'放棄点 {m["abandonments"]} / 理由が言葉になっていない {m["unverbalized"]} '
           f'/ 空白 {len(structured.get("gaps", []))} / 仮置き {len(proto["assumptions"])}')
     print(f'プロトタイプ: {out_dir / proto_name}')
-    error = render.ux_error(proto)
-    if error:
-        print(f"UX 試験: できませんでした（{error}）")
-    else:
-        counts = proto["ux"]["summary"]
+    # **UX 試験は作る側が見るもの。** 成果物からは外したが、端末には出す
+    counts = (proto.get("ux") or {}).get("summary")
+    if counts:
         print(f'UX 試験: fail {counts["fail"]} / pass {counts["pass"]} / skip {counts["skip"]}')
+    else:
+        print("UX 試験: できませんでした")
     return dest
 
 
