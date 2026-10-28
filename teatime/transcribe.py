@@ -32,13 +32,22 @@ def split(wav, out_dir):
     return sorted(out_dir.glob("part-*.wav"))
 
 
+def _local(part):
+    """**裏方が落ちていても止まらない。** 母艦の mlx-whisper へ退避する。
+    遅いが、終わる。**宛先は増やさない**（uni2 か、ここだけ）。"""
+    import mlx_whisper
+    out = mlx_whisper.transcribe(str(part), path_or_hf_repo=MODEL, language="ja")
+    return out.get("segments", [])
+
+
 def run(src, with_time=True):
-    from remote_whisper import backyard_host, transcribe_remote
-    host = backyard_host()
+    try:
+        from remote_whisper import backyard_host, transcribe_remote
+        host = backyard_host()
+    except Exception:
+        host = None
     if not host:
-        sys.exit("裏方（uni2）に届きません。文字起こしの宛先がありません。\n"
-                 "母艦でやるには ~/venv/whisper を作る必要があります"
-                 "（backyard-manifest.json の whisper の restore を参照）。")
+        print("裏方（uni2）に届きません。母艦で文字起こしします（遅くなります）。")
 
     lines = []
     with tempfile.TemporaryDirectory() as tmp:
@@ -47,9 +56,15 @@ def run(src, with_time=True):
         to_wav(src, wav)
         parts = split(wav, tmp)
         for i, p in enumerate(parts):
-            segs = transcribe_remote(p, MODEL, host)
+            segs = transcribe_remote(p, MODEL, host) if host else None
             if segs is None:
-                sys.exit(f"文字起こしが途中で止まりました（{p.name}）。")
+                # **途中で落ちても、その断片だけ母艦で引き取る**
+                if host:
+                    print(f"裏方が {p.name} で止まりました。母艦で続けます。")
+                try:
+                    segs = _local(p)
+                except Exception as error:
+                    sys.exit(f"文字起こしが止まりました（{p.name}）: {error}")
             base = i * CHUNK_SEC
             for s in segs:
                 t = int(base + s.get("start", 0))
