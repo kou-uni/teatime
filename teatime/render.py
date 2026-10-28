@@ -91,9 +91,6 @@ a:focus-visible,.tw:focus-visible{outline:2px solid var(--ink);outline-offset:4p
 .pair .give{color:var(--muted)}
 .pair .label{flex:0 0 48px;font-size:12px}
 .strip{margin-top:16px;font-size:14px;color:var(--muted)}
-.toc{margin-top:32px}
-.toc ul{list-style:none;margin:0;padding:0}
-.toc a{display:flex;align-items:center;width:fit-content;max-width:100%;min-width:44px;min-height:44px;padding:8px 0}
 section{display:block;margin-top:64px;scroll-margin-top:16px}
 .section-title{font-size:20px;font-weight:650;margin-bottom:32px}
 h2{font-size:20px;line-height:1.6;margin:32px 0 16px;font-weight:650}
@@ -128,6 +125,15 @@ h2,h3,h4{break-after:avoid}.pair,tr,blockquote{break-inside:avoid}
 .tw{overflow:visible}.tw table{min-width:0}thead{display:table-header-group}
 a.btn{background:none;color:var(--ink);padding:0;text-decoration:underline}
 }
+.doc{border-top:1px solid var(--rule);padding:0}
+.doc>summary{display:flex;align-items:center;justify-content:space-between;gap:16px;min-height:56px;padding:16px 0;cursor:pointer;list-style:none;font-size:16px}
+.doc>summary::-webkit-details-marker{display:none}
+.doc>summary::after{content:"読む";color:var(--muted);font-size:13px}
+.doc[open]>summary::after{content:"閉じる"}
+.doc[open]>summary{border-bottom:1px solid var(--rule)}
+.doc>*:last-child{margin-bottom:32px}
+h1.adopted.long{font-size:26px}
+h1.adopted.xlong{font-size:21px;line-height:1.7}
 """
 
 PAGE = """<!doctype html>
@@ -139,12 +145,12 @@ PAGE = """<!doctype html>
 <main>
 <div class="core">
 <p class="k">採用した一行</p>
-<h1 class="adopted">{adopted}</h1>
+<h1 class="adopted {adopted_class}">{adopted}</h1>
 <div class="condition"><p class="k">成り立つ条件</p><p class="c">{condition}</p></div>
 <div class="choices" aria-label="取るものと手放すもの">{pairs}</div>
 </div>
 <p class="strip">{strip}</p>
-<div class="toc" role="navigation" aria-label="成果物の目次"><ul>{toc_items}</ul></div>
+
 {sections}
 </main>
 <footer>
@@ -203,23 +209,26 @@ def render(title, source, model_label, docs, structured, proto=None):
     if proto:
         docs = list(docs) + [{"key": "proto", "title": "プロトタイプ",
                               "text": assumptions_md(proto)}]
-    toc_items = "".join(
-        f'<li><a href="#doc-{i}">{html.escape(doc["title"])}</a></li>'
-        for i, doc in enumerate(docs))
     sections = []
     for i, doc in enumerate(docs):
         # **本文の見出しと文言は保ち、目次と同じ文書名で識別する。**
         body = md(doc["text"]).replace(
             "⚑", '<span class="risk" aria-label="高リスク">⚑&#xfe0e;</span>')
+        # **4文書を全部ぶちまけない。** 開いた人だけが読む。
+        # プロトタイプだけは開いておく（触る導線なので畳むと死ぬ）。
+        openness = " open" if doc["key"] == "proto" else ""
         sections.append(
-            f'<section id="doc-{i}" aria-labelledby="doc-title-{i}">'
-            f'<p class="section-title" id="doc-title-{i}">{html.escape(doc["title"])}</p>'
-            f'{body}</section>')
+            f'<details class="doc" id="doc-{i}"{openness}>'
+            f'<summary class="section-title">{html.escape(doc["title"])}</summary>'
+            f'{body}</details>')
     d = structured.get("decision") or {}
+    # **長い一行は、大きい明朝で出すと6行の壁になる。** 字数で級数を落とす
+    adopted_text = d.get("adopted") or "まだ決まっていません"
+    adopted_class = "lead" + ("" if len(adopted_text) <= 40 else " long" if len(adopted_text) <= 80 else " xlong")
     return PAGE.format(
         title=html.escape(title), css=CSS, src=html.escape(source),
         stamp=datetime.datetime.now().strftime("%Y-%m-%d %H:%M"),
         model=html.escape(model_label),
-        adopted=_inline(d.get("adopted") or "まだ決まっていません"),
+        adopted=_inline(adopted_text), adopted_class=adopted_class,
         condition=_inline(d.get("condition") or "未入力（議論で出ていない）"),
-        pairs=pairs, strip=strip, toc_items=toc_items, sections="".join(sections))
+        pairs=pairs, strip=strip, sections="".join(sections))
