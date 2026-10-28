@@ -34,6 +34,8 @@ def route(role="think"):
     """**行き先を決めるのはここ1か所。** 考える工程は Claude、作る工程はローカル。"""
     if BACKEND == "ollama":  # 私的な議論用。何より先に効かせる
         return "ollama"
+    if role == "check":  # **検査は外へ逃がさない。**
+        return "ollama"
     if role == "code" and CODE_BACKEND != "claude":
         return "ollama"
     return "claude"
@@ -148,7 +150,8 @@ def ask_json(system, user, timeout=900, role="think"):
 
 
 def _label_one(role, backend, model, fallback=False):
-    head = "考える: " if role == "think" else "作る: "
+    # **未知の役で落とさない。** think 以外の従来表示も残す
+    head = {"think": "考える: ", "check": "確かめる: "}.get(role, "作る: ")
     name = "claude-cli" if backend == "claude" else model
     return head + name + ("（退避あり）" if fallback else "")
 
@@ -157,7 +160,10 @@ def label():
     """**実際に使ったもの**を返す。退避したなら、そう書く。"""
     log = getattr(_usage, "log", [])
     parts = []
-    for role in ("think", "code"):
+    roles = ("think", "code")
+    if any(r["role"] == "check" for r in log):  # **呼んだときだけ出す。**
+        roles += ("check",)
+    for role in roles:
         rec = next((r for r in reversed(log) if r["role"] == role), None)
         if rec:
             parts.append(_label_one(role, rec["backend"], rec["model"], rec["fallback"]))
