@@ -277,6 +277,15 @@ def build(transcript, structured, on_step=None):
         f"<main>{markup}</main>"
         + _sheet(assumptions)
         + f"<script>{js}\n{SHEET_JS}</script></body></html>")
+    if on_step:
+        on_step("uxcheck")
+    try:
+        from . import uxcheck
+        report = uxcheck.check(page)
+    except Exception as error:
+        # **成果物は出す。試験の障害は隠さない。**
+        report = {"checks": {}, "summary": {"fail": 0, "pass": 0, "skip": 0},
+                  "execution": {"complete": False, "障害": type(error).__name__}}
     return {"mvp": mvp, "assumptions": assumptions, "html": page,
             "markup_chars": len(markup), "js_chars": len(js),
-            "js_check": js_check}
+            "js_check": js_check, "ux": report}

@@ -14,11 +14,12 @@ from . import deliver, extract, model, prototype, render
 AUDIO = {".m4a", ".mp3", ".wav", ".mp4", ".aac", ".caf", ".webm", ".ogg"}
 
 
-def tea(path, keys=None, video=False):
+def tea(path, keys=None, video=False, out_dir=None):
     model.reset_usage()  # **頭で数え直す。** 前の回の退避を次の回に引きずらない
     src = pathlib.Path(path).expanduser()
-    out_dir = pathlib.Path(__file__).resolve().parent.parent / "out"
-    out_dir.mkdir(exist_ok=True)
+    out_dir = (pathlib.Path(__file__).resolve().parent.parent / "out"
+               if out_dir is None else pathlib.Path(out_dir).expanduser())
+    out_dir.mkdir(parents=True, exist_ok=True)
 
     if src.suffix.lower() in AUDIO:
         from . import transcribe
@@ -66,6 +67,12 @@ def tea(path, keys=None, video=False):
     print(f'放棄点 {m["abandonments"]} / 理由が言葉になっていない {m["unverbalized"]} '
           f'/ 空白 {len(structured.get("gaps", []))} / 仮置き {len(proto["assumptions"])}')
     print(f'プロトタイプ: {out_dir / proto_name}')
+    error = render.ux_error(proto)
+    if error:
+        print(f"UX 試験: できませんでした（{error}）")
+    else:
+        counts = proto["ux"]["summary"]
+        print(f'UX 試験: fail {counts["fail"]} / pass {counts["pass"]} / skip {counts["skip"]}')
     return dest
 
 

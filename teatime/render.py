@@ -146,6 +146,19 @@ STUCK = {"action": "取りうる手", "outcome": "どうなるか",
          "causation": "何が何を起こすか", "value": "どちらに価値があるか"}
 
 
+def ux_error(proto):
+    """**skip と試験障害を区別する。** HTML と端末で同じ理由を出す。"""
+    report = (proto or {}).get("ux") or {}
+    execution = report.get("execution", {})
+    reason = execution.get("障害")
+    if not reason:
+        reason = next((c["障害"] for c in execution.get("coverage", [])
+                       if c.get("check") == "browser" and c.get("障害")), None)
+    if not reason and not report.get("checks"):
+        reason = "試験結果なし"
+    return " ".join(str(reason).split()).replace("|", "/") if reason else None
+
+
 def assumptions_md(proto):
     """仮置きを、文書と同じ形で1枚にする。**どこを埋めたかを隠さない。**"""
     if not proto:
@@ -162,6 +175,24 @@ def assumptions_md(proto):
     rows += ["", f"⚑ は**外れると作り直しになるもの（{hi}件）**。先に確かめてください。", "",
              "## 触る", f'[プロトタイプを開く]({proto["url"]})',
              "", "**これは議論の記録＋上の仮置きだけから作られています。**"]
+    rows += ["", "## UX 試験"]
+    error = ux_error(proto)
+    if error:
+        rows.append(f"**試験できませんでした（{error}）。**")
+    else:
+        from . import uxcheck
+        report = proto["ux"]
+        counts = report["summary"]
+        rows += [f'**fail {counts["fail"]}件 / pass {counts["pass"]}件 / skip {counts["skip"]}件。**', ""]
+        if counts["fail"]:
+            rows += [f'**この画面は {counts["fail"]} 件の試験に落ちています。**', ""]
+        rows += ["| 観点 | 見るところ | 結果 | 理由 |", "|---|---|---|---|"]
+        for key in uxcheck.IDS:
+            check = report["checks"][key]
+            status = check["status"]
+            result = "**fail**" if status == "fail" else status
+            reason = " ".join(check["reason"].split()).replace("|", "/")
+            rows.append(f"| {key} | {uxcheck.LABELS[key]} | {result} | {reason} |")
     return "\n".join(rows)
 
 
@@ -169,12 +200,14 @@ def render(title, source, model_label, docs, structured, proto=None):
     m = structured.get("metrics", {})
     st = (structured.get("stuck") or {}).get("type")
     rate = m.get("unverbalized_rate")
+    fail = "—" if ux_error(proto) else proto["ux"]["summary"]["fail"]
     strip = "".join([
         f'<div class="m"><b>{m.get("abandonments",0)}</b><span>放棄点</span></div>',
         f'<div class="m"><b>{"—" if rate is None else f"{int(rate*100)}%"}</b>'
         f"<span>理由が言葉になっていない</span></div>",
         f'<div class="m"><b>{len(structured.get("gaps",[]))}</b><span>埋めるべき空白</span></div>',
         f'<div class="m"><b>{STUCK.get(st,"—")}</b><span>詰まっている所</span></div>',
+        f'<div class="m"><b>{fail}</b><span>UX 試験の fail</span></div>',
     ])
     if proto:
         docs = list(docs) + [{"key": "proto", "title": "プロトタイプ",
