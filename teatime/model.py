@@ -1,16 +1,19 @@
 """モデルの呼び出し口。**宛先を直書きしない。**
 
-既定は Claude CLI（抽出に推論の質が要るため）。
-**私的な対話は `TEATIME_BACKEND=ollama` で裏方の Qwen に落とす。**
+**行き先は役で決める。** 頭を使う工程（抽出・4文書・仮置き）は Claude CLI、
+言われたとおりに作る工程（HTML / JS）はローカルの Qwen。
+**私的な対話は `TEATIME_BACKEND=ollama` で全部を裏方に落とす。**
 切替点はこの1ファイルだけ。
 """
 import json
 import os
 import pathlib
 import subprocess
+import threading
 import urllib.request
 
 BACKEND = os.environ.get("TEATIME_BACKEND", "claude")
+CODE_BACKEND = os.environ.get("TEATIME_CODE_BACKEND", "ollama")
 
 OLLAMA_CANDIDATES = [
     os.environ.get("TEATIME_OLLAMA"),
@@ -18,9 +21,38 @@ OLLAMA_CANDIDATES = [
     "http://127.0.0.1:11434",    # 母艦（退避先）
 ]
 OLLAMA_MODEL = os.environ.get("TEATIME_OLLAMA_MODEL", "qwen2.5:32b")
+CODE_MODEL = os.environ.get("TEATIME_CODE_MODEL", "qwen2.5-coder:32b")
 NUM_PREDICT = int(os.environ.get("TEATIME_NUM_PREDICT", "8000"))
 
 _endpoint = None
+
+# **黙って退避しない。** 実際にどこへ出したかをスレッドごとに積む（処理の頭で reset_usage）。
+_usage = threading.local()
+
+
+def route(role="think"):
+    """**行き先を決めるのはここ1か所。** 考える工程は Claude、作る工程はローカル。"""
+    if BACKEND == "ollama":  # 私的な議論用。何より先に効かせる
+        return "ollama"
+    if role == "code" and CODE_BACKEND != "claude":
+        return "ollama"
+    return "claude"
+
+
+def _model_for(role):
+    return CODE_MODEL if role == "code" else OLLAMA_MODEL
+
+
+def reset_usage():
+    """1回の処理の頭で数え直す。**前の回の退避を次の回に引きずらない。**"""
+    _usage.log = []
+
+
+def _record(role, backend, model, fallback=False):
+    if not hasattr(_usage, "log"):
+        _usage.log = []
+    _usage.log.append({"role": role, "backend": backend,
+                       "model": model, "fallback": fallback})
 
 
 def _ollama_endpoint(timeout=8):
@@ -39,9 +71,9 @@ def _ollama_endpoint(timeout=8):
     raise RuntimeError("Ollama の宛先が見つかりません: " + ", ".join(tried))
 
 
-def _ask_ollama(system, user, timeout=900):
+def _ask_ollama(system, user, timeout=900, model=None):
     body = {
-        "model": OLLAMA_MODEL,
+        "model": model or OLLAMA_MODEL,
         "stream": False,
         "options": {"num_predict": NUM_PREDICT, "temperature": 0.3},
         "messages": [
@@ -80,17 +112,31 @@ def _ask_claude(system, user, timeout=900):
     return out.stdout.strip()
 
 
-def ask(system, user, timeout=900):
-    """1往復。返るのは本文の文字列。"""
-    if BACKEND == "ollama":
-        return _ask_ollama(system, user, timeout)
-    return _ask_claude(system, user, timeout)
+def ask(system, user, timeout=900, role="think"):
+    """1往復。返るのは本文の文字列。**role で行き先が変わる（既定は think）。**"""
+    if route(role) == "ollama":
+        m = _model_for(role)
+        try:
+            out = _ask_ollama(system, user, timeout, m)
+            _record(role, "ollama", m)
+            return out
+        except Exception:  # noqa: BLE001
+            # **作る工程だけ逃がす。** ローカルが落ちても仕事は止めない。ただし記録に残す
+            # **私的モードでは逃がさない。** 逃がした先が外の Claude になり、議論が手元から出る
+            if role != "code" or BACKEND == "ollama":
+                raise
+            out = _ask_claude(system, user, timeout)
+            _record(role, "claude", "claude-cli", fallback=True)
+            return out
+    out = _ask_claude(system, user, timeout)
+    _record(role, "claude", "claude-cli")
+    return out
 
 
-def ask_json(system, user, timeout=900):
+def ask_json(system, user, timeout=900, role="think"):
     """JSON だけを期待する呼び出し。コードフェンスと前置きを剥がす。"""
     raw = ask(system + "\n出力は JSON のみ。前置き・後書き・コードフェンスを書かない。",
-              user, timeout)
+              user, timeout, role)
     t = raw.strip()
     if t.startswith("```"):
         t = t.split("\n", 1)[1] if "\n" in t else t
@@ -101,5 +147,21 @@ def ask_json(system, user, timeout=900):
     return json.loads(t[i:j + 1])
 
 
+def _label_one(role, backend, model, fallback=False):
+    head = "考える: " if role == "think" else "作る: "
+    name = "claude-cli" if backend == "claude" else model
+    return head + name + ("（退避あり）" if fallback else "")
+
+
 def label():
-    return "claude-cli" if BACKEND != "ollama" else f"{OLLAMA_MODEL}@{_ollama_endpoint()}"
+    """**実際に使ったもの**を返す。退避したなら、そう書く。"""
+    log = getattr(_usage, "log", [])
+    parts = []
+    for role in ("think", "code"):
+        rec = next((r for r in reversed(log) if r["role"] == role), None)
+        if rec:
+            parts.append(_label_one(role, rec["backend"], rec["model"], rec["fallback"]))
+        else:  # まだ呼んでいない役は設定から組み立てる
+            parts.append(_label_one(role, route(role), _model_for(role)))
+    return " / ".join(parts)
+

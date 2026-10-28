@@ -39,9 +39,20 @@ STEPS = [
 ]
 
 
+class Cancelled(Exception):
+    """「やっぱやめる」。走っている1歩は止められないので、**次の歩の手前で止まる。**"""
+
+
+def _discard(audio):
+    """その回の録音と途中の生成物を全部消す。**やめた回はアーカイブに残さない。**"""
+    for f in OUT.glob(f"{audio.stem}.*"):
+        f.unlink(missing_ok=True)
+
+
 def _work(job_id, audio):
     """**進行を1歩ずつ外に出す。** 黙って動いているものは、止まっているのと見分けがつかない。"""
     from . import deliver, extract, model, prototype, render, transcribe
+    model.reset_usage()  # **頭で数え直す。** 前の回の退避を次の回に引きずらない
     job = JOBS[job_id]
     steps = [{"key": k, "label": l, "state": "wait", "sec": 0} for k, l in STEPS]
     if os.environ.get("TEATIME_VIDEO") == "1":
@@ -50,6 +61,8 @@ def _work(job_id, audio):
     clock = {"t": time.time()}
 
     def step(key):
+        if job.get("cancel"):
+            raise Cancelled()
         now = time.time()
         for s_ in steps:
             if s_["state"] == "run":
@@ -108,10 +121,18 @@ def _work(job_id, audio):
             from . import narrate
             mp4 = f"/out/{narrate.build(OUT / audio.stem, structured, docs).name}"
 
+        if job.get("cancel"):
+            raise Cancelled()
         finish()
         job.update(state="done", url=f"/out/{audio.stem}.html",
                    proto=proto["url"], video=mp4,
                    assumptions=len(proto["assumptions"]))
+    except Cancelled:
+        _discard(audio)
+        for s_ in steps:
+            if s_["state"] in ("run", "wait"):
+                s_["state"] = "cancel"
+        job.update(state="cancelled")
     except Exception as exc:  # noqa: BLE001
         traceback.print_exc()
         for s_ in steps:
@@ -169,6 +190,19 @@ class H(BaseHTTPRequestHandler):
         self._send(404, json.dumps({"error": "not found"}))
 
     def do_POST(self):
+        if self.path == "/cancel":
+            body = self.rfile.read(int(self.headers.get("Content-Length") or 0))
+            job_id = json.loads(body or b"{}").get("id")
+            job = JOBS.get(job_id)
+            if not job:
+                return self._send(404, json.dumps({"error": "その回はありません"}))
+            if job.get("state") in ("done", "error"):  # 間に合わなかった。できた分を消す
+                for f in OUT.glob(f"rec-{job_id}.*"):
+                    f.unlink(missing_ok=True)
+                job["state"] = "cancelled"
+            elif job.get("state") != "cancelled":
+                job["cancel"] = True
+            return self._send(200, json.dumps({"state": job.get("state")}))
         if self.path != "/upload":
             return self._send(404, json.dumps({"error": "not found"}))
         filename, blob = parse_multipart_file(

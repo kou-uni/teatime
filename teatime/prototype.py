@@ -16,7 +16,11 @@ LLM には中身だけを短く2回に分けて書かせる。**
 """
 import html as _h
 import json
+import pathlib
 import re
+import shutil
+import subprocess
+import tempfile
 
 from . import model
 
@@ -53,7 +57,10 @@ MARKUP_SYS = (
     "- class は `card` `row` `col` `btn` `btn2` `mut` `tag` `big` `field` だけ使う。"
     "自前の style 属性は最小限。\n"
     "- **読むだけの画面にしない。** 入力欄・ボタン・一覧など、指で触れるものを置く。\n"
-    "- サンプルデータを最初から入れておく（空の画面を出さない）。\n"
+    "- 空の画面は出さない。ただし**例の行は2件まで**。行の頭に `<span class=\"tag\">例</span>` を付け、"
+    "議論の記録か仮置きに出てくる言葉だけで書く（作り話を本物に見せない）。\n"
+    "- **議論で後回しにしたもの（次回やると決めたこと）は、画面に出さない。**\n"
+    "- `<main>` タグ自体は書かない（中身だけ）。\n"
     "- 操作に必要な要素には `id` を付ける（JS から触ります）。\n"
     "- 絵文字を使わない。日本語。\n"
     "- **2500字以内。** 前置き・後書き・コードフェンスを書かない。"
@@ -86,6 +93,8 @@ JS_SYS = (
     "- 外部ライブラリを使わない。保存が要るなら localStorage。\n"
     "- 渡された HTML に**実在する id/class だけ**を触る。無いものを作らない。\n"
     "- 主要な操作が1つでも実際に効くこと（増える・消える・絞られる・計算される）。\n"
+    "- **押したら必ず目に見えて何か変わる。** 空のまま押されたら、その場で一言出す。\n"
+    "- 日付の既定値は今日。\n"
     "- **2000字以内。** 説明文を書かない。"
 )
 
@@ -97,6 +106,11 @@ JS_PROMPT = """この画面を動かしてください。作っているもの: 
 
 ---
 JS だけを 2000字以内で。
+"""
+
+JS_FIX_PROMPT = """
+前回の JS は構文エラーで動きませんでした。**エラーを直した JS 全体**を、もう一度出してください。
+{err}
 """
 
 CSS = """
@@ -178,6 +192,36 @@ def _clean(text, drop_tags=True):
     return t.strip()
 
 
+def _node():
+    """node の居場所。**PATH に無くても、よくある置き場だけは見る。**"""
+    for p in (shutil.which("node"), "~/.local/bin/node",
+              "/opt/homebrew/bin/node", "/usr/local/bin/node"):
+        if p:
+            path = pathlib.Path(p).expanduser()
+            if path.exists():
+                return str(path)
+    return None
+
+
+def _js_check(js):
+    """構文だけは機械に見させる。返すのは (状態, エラー文)。"""
+    node = _node()
+    if not node:
+        return "skipped", ""
+    with tempfile.NamedTemporaryFile("w", suffix=".js", delete=False,
+                                     encoding="utf-8") as f:
+        f.write(js)
+        path = pathlib.Path(f.name)
+    try:
+        out = subprocess.run([node, "--check", str(path)],
+                             capture_output=True, text=True, timeout=60)
+    finally:
+        path.unlink(missing_ok=True)
+    if out.returncode == 0:
+        return "ok", ""
+    return "ng", (out.stderr or out.stdout).strip()[:800]
+
+
 def build(transcript, structured, on_step=None):
     d = structured.get("decision") or {}
     sacrificed = "、".join(
@@ -200,10 +244,29 @@ def build(transcript, structured, on_step=None):
         condition=d.get("condition") or "（決まっていない。仮置きで進める）",
         sacrificed=sacrificed,
         assumptions=json.dumps(assumptions, ensure_ascii=False, indent=1),
-        transcript=transcript[:6000])))
+        transcript=transcript[:6000])))  # **画面は考える工程**（決めたことを画面に訳す）。ローカルでは決定を落とした（2026-10-28）
 
-    js = _clean(model.ask(JS_SYS, JS_PROMPT.format(mvp=mvp, markup=markup)),
-                drop_tags=True)
+    def ask_js(role, err=""):
+        prompt = JS_PROMPT.format(mvp=mvp, markup=markup)
+        if err:
+            prompt += JS_FIX_PROMPT.format(err=err)
+        return _clean(model.ask(JS_SYS, prompt, role=role), drop_tags=True)
+
+    js = ask_js("code")
+    js_check, err = _js_check(js)
+    if js_check == "ng":  # **直させる。** まず作る側、それでも駄目なら考える側
+        js = ask_js("code", err)
+        js_check, err = _js_check(js)
+        if js_check == "ok":
+            js_check = "retried"
+    if js_check == "ng":
+        js = ask_js("think", err)
+        js_check, err = _js_check(js)
+        if js_check == "ok":
+            js_check = "claude"
+    if js_check == "ng":
+        # **壊れた JS はページに載せない。** 仮置きのボタンは別の JS なので生きる
+        js, js_check = "", "failed"
 
     topic = structured.get("topic", "")
     page = (
@@ -215,4 +278,5 @@ def build(transcript, structured, on_step=None):
         + _sheet(assumptions)
         + f"<script>{js}\n{SHEET_JS}</script></body></html>")
     return {"mvp": mvp, "assumptions": assumptions, "html": page,
-            "markup_chars": len(markup), "js_chars": len(js)}
+            "markup_chars": len(markup), "js_chars": len(js),
+            "js_check": js_check}

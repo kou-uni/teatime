@@ -64,7 +64,7 @@ TEATIME_VIDEO=1 .venv/bin/python -m teatime.server --tailnet   # 動画も作る
 ## 中身
 
 ```
-teatime/model.py       呼び出し口。既定は Claude CLI。TEATIME_BACKEND=ollama で裏方の Qwen
+teatime/model.py       呼び出し口。**行き先は役で決める**（route() 1か所）。考える工程（抽出・4文書・仮置き・**プロトタイプの画面**）=Claude CLI / 作る工程（JS）=ローカル qwen2.5-coder:32b。TEATIME_CODE_BACKEND=claude で作る工程も Claude、TEATIME_BACKEND=ollama で全部ローカル
 teatime/transcribe.py  録音 → 文字起こし（uni2 の mlx-whisper を借りる）
 teatime/extract.py     一次資料。**ここが急所**
 teatime/deliver.py     4つの文書

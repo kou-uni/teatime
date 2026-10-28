@@ -15,6 +15,7 @@ AUDIO = {".m4a", ".mp3", ".wav", ".mp4", ".aac", ".caf", ".webm", ".ogg"}
 
 
 def tea(path, keys=None, video=False):
+    model.reset_usage()  # **頭で数え直す。** 前の回の退避を次の回に引きずらない
     src = pathlib.Path(path).expanduser()
     out_dir = pathlib.Path(__file__).resolve().parent.parent / "out"
     out_dir.mkdir(exist_ok=True)

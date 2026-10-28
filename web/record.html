@@ -43,12 +43,18 @@ max-width:360px}
 .links a{display:block;padding:13px;border-radius:4px;text-decoration:none;font-weight:650}
 .links a.primary{background:var(--accent);color:#fff}
 .links a.ghost{border:1px solid var(--line);color:var(--fg)}
+#x{display:none;margin:18px auto 0;background:none;border:0;color:var(--mut);
+font:inherit;font-size:13px;text-decoration:underline;padding:8px 14px}
+body[data-s=rec] #x,body[data-s=busy] #x{display:inline-block}
+#x.arm{color:#a63d33;text-decoration:none;border:1px solid #a63d33;border-radius:4px}
+#prog .row.cancel{text-decoration:line-through}
 .foot{position:fixed;bottom:22px;color:var(--mut);font-size:11px;padding:0 20px}
 </style></head><body data-s="idle">
 <h1>teatime</h1>
 <div class="sub">タップで録音がはじまります。<br>終わったらもう一度タップして、席を外してください。</div>
 <button id="go">はじめる</button>
 <div id="t"></div><div id="msg"></div>
+<button id="x">やめる（残さない）</button>
 <div id="prog"></div>
 <div id="found"></div>
 <div class="links" id="links">
@@ -60,7 +66,8 @@ max-width:360px}
 let mr, chunks=[], t0, tick, stream;
 const $=(i)=>document.getElementById(i), go=$('go'), msg=$('msg'), rep=$('rep');
 const prog=$('prog'), found=$('found'), links=$('links'), proto=$('proto');
-let t1=0, bump=null;
+let t1=0, bump=null, jobId=null, quit=false, upload=null, arm=null;
+const x=$('x');
 const fmt=(s)=>`${String(Math.floor(s/60)).padStart(2,'0')}:${String(s%60).padStart(2,'0')}`;
 
 go.onclick = async () => {
@@ -70,7 +77,8 @@ go.onclick = async () => {
     stream = await navigator.mediaDevices.getUserMedia({audio:{
       echoCancellation:false, noiseSuppression:false, autoGainControl:true}});
   } catch (e) { msg.textContent = 'マイクが使えません（'+e.name+'）。HTTPS で開いているか確認してください。'; return; }
-  chunks=[];
+  chunks=[]; quit=false; jobId=null;
+  links.style.display='none'; prog.style.display='none'; found.style.display='none';
   const mime = ['audio/mp4','audio/webm;codecs=opus','audio/webm'].find(m=>MediaRecorder.isTypeSupported(m));
   mr = new MediaRecorder(stream, mime?{mimeType:mime}:undefined);
   mr.ondataavailable = e => e.data.size && chunks.push(e.data);
@@ -90,9 +98,13 @@ async function send(){
   msg.textContent='送っています…（'+Math.round(blob.size/1024)+'KB）';
   const fd = new FormData(); fd.append('audio', blob, 'rec.'+ext);
   let r;
-  try { r = await (await fetch('/upload', {method:'POST', body:fd})).json(); }
-  catch(e){ msg.textContent='送れませんでした: '+e.message; document.body.dataset.s='idle';
+  upload = new AbortController();
+  try { r = await (await fetch('/upload', {method:'POST', body:fd, signal:upload.signal})).json(); }
+  catch(e){ if (quit) return;
+            msg.textContent='送れませんでした: '+e.message; document.body.dataset.s='idle';
             go.textContent='はじめる'; return; }
+  jobId = r.id;
+  if (quit) return cancelJob();  // 送っている最中にやめた。届いてしまった分を消す
   msg.textContent='お茶をどうぞ。席を外して大丈夫です。';
   prog.style.display='block'; t1=Date.now();
   bump=setInterval(()=>{const e=prog.querySelector('.row.run .sec');
@@ -124,12 +136,46 @@ function drawFound(r){
   found.style.display='block'; found.innerHTML = bits.map(b=>'・'+b).join('<br>');
 }
 
+// 「やっぱやめる」。誤タップで議論を失わないよう、2回押したときだけ捨てる
+x.onclick = () => {
+  if (!arm){
+    x.classList.add('arm');
+    x.textContent = document.body.dataset.s==='rec'
+      ? 'もう一度押すと、録音を捨てます' : 'もう一度押すと、この回を消します';
+    arm = setTimeout(disarm, 3000); return;
+  }
+  disarm(); quit = true;
+  if (document.body.dataset.s==='rec'){
+    clearInterval(tick); mr.onstop=null; mr.stop(); stream.getTracks().forEach(t=>t.stop());
+    chunks=[]; return reset('やめました。録音は送っていません。');
+  }
+  if (jobId) return cancelJob();
+  if (upload) upload.abort();
+  reset('やめました。');
+};
+function disarm(){ clearTimeout(arm); arm=null; x.classList.remove('arm');
+  x.textContent='やめる（残さない）'; }
+function reset(text){ clearInterval(bump); document.body.dataset.s='idle';
+  go.textContent='はじめる'; $('t').textContent=''; msg.textContent=text; }
+async function cancelJob(){
+  reset('やめています。いま動いている1歩が終わったら、録音ごと消します。');
+  try { await fetch('/cancel', {method:'POST', body:JSON.stringify({id:jobId})}); }
+  catch(e){ msg.textContent='やめる合図が届きませんでした: '+e.message; return; }
+  poll(jobId);
+}
+
 async function poll(id){
+  if (id!==jobId) return;  // 次の回を始めたら、前の回は追わない
   let r; try { r = await (await fetch('/status?id='+id)).json(); }
   catch(e){ return setTimeout(()=>poll(id), 4000); }
   if (r.steps) draw(r.steps);
   drawFound(r);
 
+  if (r.state === 'cancelled'){
+    prog.style.display='none'; found.style.display='none';
+    msg.textContent='やめました。録音も途中のものも消しました。'; return; }
+  if (quit && r.state !== 'done' && r.state !== 'error')
+    return setTimeout(()=>poll(id), 2000);
   if (r.state === 'done'){
     clearInterval(bump);
     msg.textContent='できました。';
