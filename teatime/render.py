@@ -113,6 +113,10 @@ th{font-weight:650;color:var(--muted)}
 .guess,.status{color:var(--muted);font-size:14px}
 a.btn{display:inline-flex;align-items:center;justify-content:center;min-width:44px;min-height:44px;padding:8px 16px;background:var(--ink);color:var(--paper);font-weight:650;text-decoration:none}
 hr.slide{border:0;border-top:1px solid var(--rule);margin:32px 0}
+.next{margin-top:64px;border-top:1px solid var(--rule);padding-top:24px}
+.next .k{color:var(--muted);font-size:12px}
+.next p.n{margin-top:8px;font-size:15px;line-height:1.7}
+.next a{color:inherit;text-underline-offset:4px}
 footer{margin-top:64px;border-top:1px solid var(--rule);padding-top:16px;color:var(--muted);font-size:12px}
 footer p+p{margin-top:16px}
 @media(max-width:640px){.wrap{padding:16px}h1,.adopted{font-size:28px}.c{font-size:14px;line-height:1.5}.tw table{min-width:560px}}
@@ -152,6 +156,7 @@ PAGE = """<!doctype html>
 <p class="strip">{strip}</p>
 
 {sections}
+{next_up}
 </main>
 <footer>
 <p>teatime — 席を外している間に、議論を事業の形へ起こす。<br>
@@ -221,6 +226,17 @@ def render(title, source, model_label, docs, structured, proto=None):
             f'<details class="doc" id="doc-{i}"{openness}>'
             f'<summary class="section-title">{html.escape(doc["title"])}</summary>'
             f'{body}</details>')
+    # **次に何が見られるかを、1行だけ予告する。** 架空の希少性で戻らせない。
+    # 手放した価値が1つも無ければ、何も出さない（予告を作文しない）。
+    first = next((a for a in structured.get("abandonments", [])
+                  if a.get("sacrificed_value")), None)
+    next_up = ""
+    if first:
+        next_up = ('<section class="next"><p class="k">次の一手</p>'
+                   f'<p class="n">もう1本録ると、今日手放した'
+                   f'<strong>{_inline(first["sacrificed_value"])}</strong>が'
+                   '次も手放されるか、順位が入れ替わるかが見られます。'
+                   '<br><a href="/archive">これまでの議論を見る</a></p></section>')
     d = structured.get("decision") or {}
     # **長い一行は、大きい明朝で出すと6行の壁になる。** 字数で級数を落とす
     adopted_text = d.get("adopted") or "まだ決まっていません"
@@ -231,4 +247,4 @@ def render(title, source, model_label, docs, structured, proto=None):
         model=html.escape(model_label),
         adopted=_inline(adopted_text), adopted_class=adopted_class,
         condition=_inline(d.get("condition") or "未入力（議論で出ていない）"),
-        pairs=pairs, strip=strip, sections="".join(sections))
+        pairs=pairs, strip=strip, sections="".join(sections), next_up=next_up)
