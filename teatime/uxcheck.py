@@ -74,6 +74,35 @@ const inputs=(root,b)=>owned(root,'input,textarea,select').filter(
  !!(e.compareDocumentPosition(b)&Node.DOCUMENT_POSITION_FOLLOWING));
 """
 
+# **候補の語彙と対応付けを M2〜M4 で共有する。**
+FLOW_DOM = """
+const action=e=>/追加|登録|保存|作る|つくる|足す/.test(name(e));
+const candidates=root=>owned(root,'button,[onclick],a').filter(
+ e=>visible(e) && (action(e) || name(e)==='編集'));
+const relation=(root,b)=>{
+ const fields=inputs(root,b);
+ // **col は生成側の縦並び。入力群や説明文を一覧にしない。**
+ const lists=owned(root,'ul,ol,tbody,[role=list],div.col[id]').filter(e=>
+  visible(e) &&
+  (!e.matches('div.col') || e.matches('[role=list]') ||
+   (!e.querySelector('input,textarea,select,button,[onclick],a') &&
+    [...e.children].every(c=>c.matches('div.row')))));
+ const controls=(b.getAttribute('aria-controls')||'').split(/\\s+/).filter(Boolean);
+ const linked=lists.filter(e=>controls.includes(e.id));
+ const selected=controls.length ? linked : lists;
+ let reason=null;
+ if(candidates(root).length!==1)reason='同じ範囲に操作候補が複数';
+ else if(!fields.length)reason='ボタンより前に可視入力がない';
+ else if(controls.length && (controls.length!==1 || linked.length!==1))
+  reason='aria-controls の一覧を一意に対応付けできない';
+ else if(selected.length>1)reason='一覧候補が複数で明示的な対応なし';
+ else if(!selected.length && name(b)!=='編集')reason='同じ範囲に一覧候補がない';
+ return {inputs:fields.map(selector),list:selected.length===1?selector(selected[0]):null,
+  reason,button:selector(b),lists:lists.map(selector),
+  selection:controls.length?'aria-controls':'同じ範囲の唯一の一覧候補'};
+};
+"""
+
 
 class Unevaluated(Exception):
     """未評価の理由だけを運ぶ。"""
@@ -318,22 +347,24 @@ def _targets(page, query=BUTTONS, sheet_only=False):
 
 
 def _discover_flow(page):
-    return page.evaluate("()=>{" + DOM + """
+    return page.evaluate("()=>{" + DOM + FLOW_DOM + """
  const scopes=[...document.querySelectorAll('form,.card')].filter(
   e=>!e.closest('#sheet'));
- const flows=[];let incomplete=0;
+ const flows=[],diagnostics=[];let incomplete=0;
  for(const root of scopes){
-  const buttons=owned(root,'button,[onclick],a').filter(
-   e=>visible(e) && ['追加','登録','保存'].includes(name(e)));
-  if(!buttons.length)continue;
-  const lists=owned(root,'ul,ol,tbody,[role=list]');
-  if(buttons.length!==1 || lists.length!==1){incomplete++;continue;}
-  const fields=inputs(root,buttons[0]);
-  if(!fields.length){incomplete++;continue;}
-  flows.push({button:selector(buttons[0]),inputs:fields.map(selector),
-              list:selector(lists[0])});
+  const buttons=candidates(root).filter(action);
+  if(!buttons.length){
+   diagnostics.push({scope:selector(root),reason:'追加・登録・保存・作る・つくる・足すを含む可視ボタンなし'});
+   continue;
+  }
+  for(const b of buttons){
+   const found=relation(root,b);
+   diagnostics.push({scope:selector(root),...found});
+   if(found.reason){incomplete++;continue;}
+   flows.push({button:found.button,inputs:found.inputs,list:found.list});
+  }
  }
- return {flows,incomplete};
+ return {flows,incomplete,diagnostics};
 }""")
 
 
@@ -341,22 +372,21 @@ def _main_flow(run, page, check_id):
     found = _discover_flow(page)
     run.coverage.append({"check": check_id, "対象数": len(found["flows"]),
                          "不成立": found["incomplete"],
+                         "探索": found["diagnostics"],
                          "曖昧": len(found["flows"]) > 1})
     if len(found["flows"]) != 1:
-        raise Unevaluated("複数 flow で主 flow 未確定" if found["flows"] else "対象なし")
+        reasons = list(dict.fromkeys(d["reason"] for d in found["diagnostics"]
+                                    if d["reason"]))
+        raise Unevaluated("複数 flow で主 flow 未確定" if found["flows"] else
+                          "flow 不成立: " + (" / ".join(reasons) or "form/.card がない"))
     return found["flows"][0]
 
 
 def _corresponding(page, selector):
-    return page.locator(selector).evaluate("(b)=>{" + DOM + """
+    return page.locator(selector).evaluate("(b)=>{" + DOM + FLOW_DOM + """
  const root=scope(b);
  if(!root || b.closest('#sheet'))return null;
- const fields=inputs(root,b);
- const lists=owned(root,'ul,ol,tbody,[role=list]');
- const candidates=owned(root,'button,[onclick],a').filter(e=>visible(e) &&
-  ['編集','保存','追加','登録'].includes(name(e)));
- if(!fields.length || lists.length>1 || candidates.length!==1)return null;
- return {inputs:fields.map(selector),list:lists.length?selector(lists[0]):null};
+ return relation(root,b);
 }""")
 
 
@@ -515,7 +545,8 @@ def _check_m1(run):
 def _check_m2(run):
     targets, records = _button_targets(run, "M2")
     targets = [(t, opened) for t, opened in targets
-               if t["name"] in ("編集", "保存", "追加", "登録")]
+               if t["name"] == "編集" or
+               re.search(r"追加|登録|保存|作る|つくる|足す", t["name"])]
     attempts = 0
     for target, opened in targets:
         def measure():
@@ -526,24 +557,39 @@ def _check_m2(run):
                     _open_sheet(state)
                 relation = _corresponding(page, target["selector"])
                 if relation is None:
-                    raise Unevaluated("対応入力が曖昧")
+                    raise Unevaluated("form/.card 内の対応入力を探索できない")
+                run.coverage.append({"check": "M2", "探索": relation})
+                if relation["reason"]:
+                    raise Unevaluated(relation["reason"])
                 if page.locator(target["selector"]).is_disabled():
                     raise Unevaluated("disabled のため押せない")
-                if target["name"] != "編集":
-                    _fill_inputs(page, relation["inputs"])
-                before = len(_items(page, relation["list"])) if relation["list"] else 0
+                values = (_fill_inputs(page, relation["inputs"])
+                          if target["name"] != "編集" else [])
+                before_items = _items(page, relation["list"]) if relation["list"] else []
+                before = len(before_items)
                 attempts += 1
                 _observe_action(state, lambda: _click(page, target["selector"]))
                 editable = all(not (i["disabled"] or i["readOnly"]) for i in
                                (_input_info(page, s) for s in relation["inputs"]))
-                after = len(_items(page, relation["list"])) if relation["list"] else 0
-                passed = editable or (relation["list"] is not None and after == before + 1)
+                after_items = _items(page, relation["list"]) if relation["list"] else []
+                after = len(after_items)
+                remaining = list(after_items)
+                for item in before_items:
+                    if item in remaining:
+                        remaining.remove(item)
+                matching = sum(_matches(item, values) for item in remaining) if values else 0
+                # **入力が元から有効なだけで、追加を pass にしない。**
+                passed = (editable if target["name"] == "編集" else
+                          after == before + 1 and matching == 1)
                 return _result("pass" if passed else "fail",
-                               "編集可能または1件追加" if passed else "編集できず追加もない",
+                               ("編集可能" if target["name"] == "編集" else "投入値を含む1件追加")
+                               if passed else "対応する編集または1件追加が成立しない",
                                [{"selector": target["selector"], "editable": editable,
-                                 "before": before, "after": after}])
+                                 "before": before, "after": after, "matching": matching}])
         records.append(_safe(run, "M2", measure))
     run.coverage.append({"check": "M2", "対象数": len(targets), "試行数": attempts})
+    if not targets:
+        records.append(_result("skip", "編集・追加・登録・保存・作る・つくる・足すの可視ボタンなし"))
     return _aggregate(records)
 
 
@@ -720,6 +766,8 @@ def _check_m9(run):
                 continue
             run.coverage.append({"check": "M9", "対象数": len(values),
                                  "試行数": len(values)})
+            if not values:
+                return _result("skip", "input[type=date] がない。自由記述の日時は判定未対応")
             return _aggregate([
                 _result("pass" if value in ("", today) else "fail",
                         "日付は空または今日" if value in ("", today) else "初期日付が今日ではない",
@@ -1092,6 +1140,51 @@ def _verify_synthetic():
         with sync_playwright() as playwright:
             browser = playwright.chromium.launch(headless=True)
             try:
+                # **実物の文は持ち込まず、語彙・空 col・曖昧さを再現する。**
+                column = good.replace('<ul id="entries"></ul>',
+                                      '<div class="col" id="entries"></div>').replace(
+                                          "document.createElement('li')",
+                                          "document.createElement('div')")
+                column = column.replace("li.textContent=row.text", "li.className='row';li.textContent=row.text")
+                for label in ("項目を追加する", "足す", "記録を作る", "記録をつくる"):
+                    html = column.replace('id="add">追加', 'id="add">' + label)
+                    run = Run(browser, html, [])
+                    with run.fresh("対応境界") as state:
+                        found = _discover_flow(state.page)
+                        assert len(found["flows"]) == 1, found
+                        result, flow = _check_m4(run, state)
+                        assert result["status"] == "pass", result
+                        assert _check_m5(run, flow)["status"] == "pass"
+                    assert _check_m2(run)["status"] == "pass"
+                    assert _check_m3(run)["status"] == "pass"
+
+                for extra, explicit, expected in (
+                    ('<ul id="other"></ul>', False, 0),
+                    ('<ul id="other"></ul>', True, 1),
+                    ('<div class="col" id="other"></div>', False, 0),
+                    ('<div class="col" id="other"><p>説明</p></div>', False, 1),
+                    ('<ul id="other" hidden></ul>', False, 1),
+                ):
+                    html = column.replace('<p id="message">', extra + '<p id="message">')
+                    if explicit:
+                        html = html.replace('id="add"', 'id="add" aria-controls="entries"')
+                    run = Run(browser, html, [])
+                    with run.fresh("一覧境界") as state:
+                        found = _discover_flow(state.page)
+                        assert len(found["flows"]) == expected, found
+                        if not expected:
+                            assert any(d["reason"] == "一覧候補が複数で明示的な対応なし"
+                                       for d in found["diagnostics"]), found
+
+                noop = good.replace("rows.push({text:entry.value,date:day.value});", "")
+                wrong = good.replace("rows.push({text:entry.value,date:day.value});",
+                                     "rows.push({text:'別の値',date:day.value});")
+                for html in (noop, wrong):
+                    run = Run(browser, html, [])
+                    assert _check_m2(run)["status"] == "fail"
+                    with run.fresh("誤対応境界") as state:
+                        assert _check_m4(run, state)[0]["status"] == "fail"
+
                 no_save = good.replace("localStorage.setItem('ux-items',JSON.stringify(rows));", "")
                 for sentence, expected in (
                     ("再読み込みすると入力した項目は消えます。", "pass"),
@@ -1390,7 +1483,17 @@ def main(argv=None) -> int:
         print(str(error) if isinstance(error, ValueError) else
               "読込・保存失敗: " + type(error).__name__, file=sys.stderr)
         return 2
-    if print_failures(report):
+    failures = print_failures(report)
+    # **fail がなくても、未実施を無言の合格に見せない。**
+    if not report["execution"]["complete"]:
+        summary = report["summary"]
+        print(f"未完了: pass {summary['pass']} / fail {summary['fail']} / skip {summary['skip']}",
+              file=sys.stderr)
+        for key in IDS[:9]:
+            record = report["checks"][key]
+            if record["status"] == "skip":
+                print(key, "skip", record["reason"], file=sys.stderr)
+    if failures:
         return 1
     return 0 if report["execution"]["complete"] else 2
 
