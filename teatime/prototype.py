@@ -169,7 +169,9 @@ summary{display:list-item}option{background:var(--paper);color:var(--ink)}
 /* 空の操作部品や入力欄は消さず、空の入れ物だけ潰す。 */
 :where(div,section,article,aside,nav,header,footer,main,p,ul,ol,dl,pre,blockquote,fieldset,output):empty:not([role]):not([contenteditable]){display:none!important}
 [hidden],input[type=hidden]{display:none!important}
-#fab{position:fixed;right:16px;bottom:16px;z-index:9;margin:0;min-width:44px;min-height:44px;padding:8px 16px;background:var(--ink);color:var(--paper);font-size:14px}
+#fab{position:fixed;left:0;right:0;bottom:0;z-index:9;margin:0;width:100%;min-height:56px;padding:16px 32px;text-align:left;background:var(--paper);color:var(--ink);border:0;border-top:1px solid var(--rule);font-size:14px}
+#fab::after{content:"▸";float:right;color:var(--muted)}
+main{padding-bottom:88px}
 #sheet{display:none;position:fixed;inset:0;z-index:10;margin:0;background:color-mix(in srgb,var(--ink) 32%,transparent);color:var(--ink)}
 #sheet.on{display:block}body:has(#sheet.on){overflow:hidden}
 #sheet>div{position:absolute;right:0;top:0;bottom:0;width:min(704px,100%);margin:0;padding:0 32px 32px;overflow-y:auto;overscroll-behavior:contain;background:var(--paper);border-left:1px solid var(--rule)}
@@ -179,7 +181,7 @@ summary{display:list-item}option{background:var(--paper);color:var(--ink)}
 .as{margin-top:32px}.as>b{display:block;font:400 22px/1.6 var(--read)}
 .as .why{color:var(--muted);font-size:14px}
 .hi,.risk,.blank{color:var(--red)}.hi{font-family:var(--ui);font-size:14px;font-variant-emoji:text}
-@media(max-width:640px){body>header,main{padding:16px}main{padding-bottom:64px}h1{font-size:28px}.big{font-size:24px}#sheet>div{padding:0 16px 32px}}
+@media(max-width:640px){body>header,main{padding:16px}main{padding-bottom:88px}h1{font-size:28px}.big{font-size:24px}#sheet>div{padding:0 16px 32px}}
 """
 
 SHEET_JS = """
