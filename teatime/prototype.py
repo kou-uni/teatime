@@ -169,6 +169,9 @@ summary{display:list-item}option{background:var(--paper);color:var(--ink)}
 /* 空の操作部品や入力欄は消さず、空の入れ物だけ潰す。 */
 :where(div,section,article,aside,nav,header,footer,main,p,ul,ol,dl,pre,blockquote,fieldset,output):empty:not([role]):not([contenteditable]){display:none!important}
 [hidden],input[type=hidden]{display:none!important}
+.filepick{display:inline-flex;align-items:center;gap:12px;min-height:44px;padding:10px 20px;background:var(--ink);color:var(--paper);font-size:14px;cursor:pointer}
+.filepick input[type=file]{position:absolute;width:1px;height:1px;opacity:0;pointer-events:none}
+.filepick .filename{color:var(--paper);font-size:13px}
 #fab{position:fixed;left:0;right:0;bottom:0;z-index:9;margin:0;width:100%;min-height:56px;padding:16px 32px;text-align:left;background:var(--paper);color:var(--ink);border:0;border-top:1px solid var(--rule);font-size:14px}
 #fab::after{content:"▸";float:right;color:var(--muted)}
 main{padding-bottom:88px}
@@ -188,6 +191,9 @@ SHEET_JS = """
 document.getElementById('fab').onclick=()=>document.getElementById('sheet').classList.add('on');
 document.getElementById('sheet').onclick=e=>{if(e.target.id==='sheet'||e.target.id==='sclose')
 document.getElementById('sheet').classList.remove('on')};
+/* 選んだファイル名を出す。出さないと押した結果が分からない。 */
+document.querySelectorAll('.filepick input[type=file]').forEach(i=>i.onchange=()=>{
+const n=i.parentNode.querySelector('.filename');if(n)n.textContent=i.files[0]?i.files[0].name:'';});
 """
 
 
@@ -222,6 +228,20 @@ def _clean(text, drop_tags=True):
     if drop_tags:
         t = re.sub(r"</?(?:script|style)[^>]*>", "", t)
     return t.strip()
+
+
+def _jp_file(markup):
+    """**ファイル選択の「Choose File」はCSSで変えられない。** 素の input を隠し、
+    label をこちら側で書いて日本語のボタンにする。モデルの書き方に依存しない。"""
+    def wrap(m):
+        tag = m.group(0)
+        if 'data-jp' in tag:
+            return tag
+        label = "写真を選ぶ" if re.search(r'accept=["\']?image', tag) else "ファイルを選ぶ"
+        return (f'<label class="filepick">{label}'
+                f'{tag[:-1]} data-jp>'
+                f'<span class="filename"></span></label>')
+    return re.sub(r'<input\b[^>]*type=["\']?file["\']?[^>]*>', wrap, markup, flags=re.I)
 
 
 def _node():
@@ -277,6 +297,7 @@ def build(transcript, structured, on_step=None):
         sacrificed=sacrificed,
         assumptions=json.dumps(assumptions, ensure_ascii=False, indent=1),
         transcript=transcript[:6000])))  # **画面は考える工程**（決めたことを画面に訳す）。ローカルでは決定を落とした（2026-10-28）
+    markup = _jp_file(markup)
 
     def ask_js(role, err=""):
         prompt = JS_PROMPT.format(mvp=mvp, markup=markup)
