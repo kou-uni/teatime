@@ -139,6 +139,9 @@ main>:is(div,section,article,form)+:is(div,section,article,form){margin-top:56px
 .row{display:flex;flex-wrap:wrap;align-items:center;gap:16px}
 .col{display:flex;flex-direction:column;gap:16px}
 .row>*,.col>*{margin-top:0;min-width:0;max-width:100%}
+/* **min-width:0 は文字を折り返すためのもので、押す所まで潰してはいけない。**
+   44px は見た目ではなく押せる範囲の下限（iOS 44pt / Android 48dp）。 */
+.row>:is(button,[role=button],input,select,textarea,a,summary,label,.btn,.btn2),.col>:is(button,[role=button],input,select,textarea,a,summary,label,.btn,.btn2){min-width:44px}
 .row>input:not([type=radio]):not([type=checkbox]){flex:1 1 100%}
 .row>.btn{flex:1 1 100%}
 .row>.btn2{flex:0 1 auto}
