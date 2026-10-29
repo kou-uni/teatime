@@ -115,22 +115,26 @@ JS_FIX_PROMPT = """
 """
 
 CSS = """
-:root{color-scheme:light dark;--paper:#f4f1ea;--ink:#23201c;--muted:#6f6a60;--rule:#ded8c9;--red:#9b3b2f;--read:"Hiragino Mincho ProN","Yu Mincho",YuMincho,"Noto Serif JP",serif;--ui:-apple-system,"Hiragino Sans","Yu Gothic","Noto Sans JP",sans-serif}
-@media(prefers-color-scheme:dark){:root{--paper:#14130f;--ink:#e9e4d8;--muted:#948d80;--rule:#2e2a23;--red:#d08477}}
+:root{color-scheme:light dark;--paper:#f4f1ea;--ink:#23201c;--muted:#6f6a60;--rule:#ded8c9;--red:#9b3b2f;--main:#3f6b26;--on-main:#f4f1ea;--ui:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Hiragino Kaku Gothic ProN","Noto Sans JP","Yu Gothic Medium",sans-serif;--num:ui-rounded,-apple-system,"SF Pro Rounded","Hiragino Sans","Noto Sans JP",sans-serif;--tap-in:70ms;--tap-out:180ms;--settle:cubic-bezier(.34,1.56,.64,1)}
+@media(prefers-color-scheme:dark){:root{--paper:#14130f;--ink:#e9e4d8;--muted:#948d80;--rule:#2e2a23;--red:#d08477;--main:#7fb34a;--on-main:#14130f}}
+/* 角丸は役割。読むものは0、**指で触れるものだけ 10px**、バーは完全な丸端。
+   ポケモンGO 実測の逆転（一覧カード19pt／詳細シート5.7pt）＝
+   小さい板はつまめるモノ、大きい板は下敷き。だから面には足さない。 */
 *{box-sizing:border-box;border-radius:0!important;letter-spacing:normal}
 *::before,*::after,input::file-selector-button{border-radius:0!important}
 body,h1,h2,h3,h4,p,ul,ol,dl,dd,blockquote,pre,fieldset{margin:0}
 *+*{margin-top:16px}
-body{margin:0;background:var(--paper);color:var(--ink);font:16px/1.6 var(--ui);overflow-wrap:anywhere;-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--paper);color:var(--ink);font:500 16px/1.6 var(--ui);overflow-wrap:anywhere;-webkit-text-size-adjust:100%;-webkit-tap-highlight-color:transparent}
 body>header,main{width:100%;max-width:704px;margin-inline:auto;padding:32px}
 body>header{padding-bottom:16px;color:var(--muted);font-size:12px;border-bottom:1px solid var(--rule)}
-main{margin-top:0;padding-bottom:64px}
+main{margin-top:0;padding-bottom:88px}
 body{padding-bottom:64px}
-h1{font:400 32px/1.3 var(--read)}
-h2,.big{font-size:24px;font-weight:650;line-height:1.5}
-h3{font-size:20px}h4{font-size:17px}
-strong,b{font-weight:650}
-main>:is(div,section,article,form)+:is(div,section,article,form){margin-top:64px}
+/* 明朝は全廃。この画面は読むためではなく触るためにある。 */
+h1{font:800 30px/1.35 var(--ui)}
+h2,.big{font-size:23px;font-weight:800;line-height:1.5}
+h3{font-size:19px;font-weight:800}h4{font-size:17px;font-weight:800}
+strong,b{font-weight:800}
+main>:is(div,section,article,form)+:is(div,section,article,form){margin-top:56px}
 .card,blockquote{background:none;border:0;padding:0}
 .row{display:flex;flex-wrap:wrap;align-items:center;gap:16px}
 .col{display:flex;flex-direction:column;gap:16px}
@@ -138,83 +142,174 @@ main>:is(div,section,article,form)+:is(div,section,article,form){margin-top:64px
 .row>input:not([type=radio]):not([type=checkbox]){flex:1 1 100%}
 .row>.btn{flex:1 1 100%}
 .row>.btn2{flex:0 1 auto}
-.mut,.tag{color:var(--muted);font-size:14px}.tag{font-size:12px}
-ul,ol{padding-left:32px}li+li{margin-top:8px}
-dt{font-weight:650}dd{margin-top:4px}
-fieldset{min-width:0;padding:0;border:0}legend{padding:0;font-weight:650}
+.mut,.tag{color:var(--muted);font-size:14px}.tag{font-size:12px;font-weight:700}
+ul,ol{padding-left:28px}li+li{margin-top:8px}
+dt{font-weight:800}dd{margin-top:4px}
+fieldset{min-width:0;padding:0;border:0}legend{padding:0;font-weight:800}
 label{display:block}label>input,label>select,label>textarea{margin-top:8px}
 pre{white-space:pre-wrap;overflow-wrap:anywhere}pre,code,kbd,samp{font-family:var(--ui);font-size:14px}
 img,video,canvas,svg{max-width:100%;height:auto}
+/* 数字は ui-rounded（SF Pro Rounded・標準搭載）で桁を揃える。
+   本家も和文と数字で丸みが別。ダウンロードは1バイトも増えない。 */
+table,output,time,progress,meter,.big{font-variant-numeric:tabular-nums}
 table{width:100%;table-layout:fixed;border-collapse:collapse;font:14px/1.6 var(--ui)}
-th,td{padding:8px;text-align:left;vertical-align:top;border-bottom:1px solid var(--rule)}
-th{font-weight:650}caption{text-align:left;margin-bottom:8px}
+th,td{padding:10px 8px;text-align:left;vertical-align:top;border-bottom:1px solid var(--rule)}
+th{font-weight:800;font-size:12px;color:var(--muted)}caption{text-align:left;margin-bottom:8px;font-weight:800}
+/* バーだけは高さの半分で丸める（ポケモンGO: バーは全部これ）。 */
+progress,meter,[role=progressbar]{border-radius:999px!important;overflow:hidden}
 a{display:inline-flex;align-items:center;min-width:44px;min-height:44px;padding:8px 0;color:inherit;text-underline-offset:4px;touch-action:manipulation}
-/* 入力は薄い沈み。新しい色や影は増やさない。 */
-input,textarea,select,.field{display:block;width:100%;max-width:100%;min-width:44px;min-height:44px;font:inherit;color:var(--ink);padding:8px 16px;border:0;border-bottom:1px solid var(--muted);background:color-mix(in srgb,var(--ink) 4%,var(--paper))}
+/* 入力は薄い沈み。触っている間だけ下罫が Main に変わる＝
+   「触れた対象そのものが変化する」。リップルは要らない（押した場所は本人が知っている）。 */
+input,textarea,select,.field{display:block;width:100%;max-width:100%;min-width:44px;min-height:48px;font:inherit;color:var(--ink);padding:10px 16px;border:0;border-bottom:2px solid var(--rule);background:color-mix(in srgb,var(--ink) 4%,var(--paper));transition:border-color 120ms ease-out,background 120ms ease-out}
+input:focus,textarea:focus,select:focus{border-bottom-color:var(--main);background:color-mix(in srgb,var(--ink) 7%,var(--paper));outline:none}
 textarea{resize:vertical}input::placeholder,textarea::placeholder{color:var(--muted);opacity:1}
 input:is([type=radio],[type=checkbox]){appearance:none;display:inline-block;width:44px;height:44px;padding:8px;margin:0;vertical-align:middle;border:1px solid var(--ink);background:var(--paper);flex-shrink:0;cursor:pointer}
-input[type=radio]:checked::before,input[type=checkbox]:checked::before{content:"✓";display:block;text-align:center;color:var(--ink);font:650 20px/1.3 var(--ui)}
-/* 押すものは墨の面。副操作は下罫、選ぶものは囲み。 */
-button,[role=button],input[type=submit],input[type=button],input[type=reset],.btn,.btn2,input::file-selector-button{display:inline-flex;align-items:center;justify-content:center;width:auto;min-width:44px;min-height:44px;max-width:100%;padding:8px 16px;border:1px solid var(--ink);background:var(--ink);color:var(--paper);font:inherit;cursor:pointer;text-decoration:none;text-align:center;touch-action:manipulation;white-space:normal}
-.btn2{background:none;color:var(--ink);border:0;border-bottom:2px solid var(--ink);padding:8px 0}
-label:has(input[type=radio]),label:has(input[type=checkbox]),select,summary,[role=option],.row:has(>.btn2~.btn2)>.btn2,label.btn2{min-width:44px;min-height:44px;padding:8px 16px;border:1px solid var(--ink);background:var(--paper);color:var(--ink);cursor:pointer}
+input[type=radio]:checked::before,input[type=checkbox]:checked::before{content:"✓";display:block;text-align:center;color:var(--ink);font:800 20px/1.3 var(--ui)}
+
+/* ===== 押す ==================================================================
+   色は2値しかない。**Main＝進む / 紙＝退く・選ぶ**（ウマ娘にはこの2つしかなく、
+   赤い危険ボタンすら無い）。色を増やすのではなく、既にあった墨の面を Main に塗り替えた
+   ので、色数は増えていない。
+   影は blur 0 のハード影＝「ぼけた浮き」ではなく**板の厚み**。押すと 3px→1px に縮む。
+   触れる前に「押せば沈む」を予告しているのはこの厚みで、装飾ではない。 */
+button,[role=button],input[type=submit],input[type=button],input[type=reset],.btn,input::file-selector-button{display:inline-flex;align-items:center;justify-content:center;width:auto;min-width:44px;min-height:48px;max-width:100%;padding:10px 20px;border:1px solid var(--main);border-radius:10px!important;background:var(--main);color:var(--on-main);font:inherit;font-weight:800;cursor:pointer;text-decoration:none;text-align:center;touch-action:manipulation;white-space:normal;box-shadow:0 3px 0 color-mix(in srgb,#000 42%,var(--main));transition:transform var(--tap-out) var(--settle),box-shadow var(--tap-out) ease-out,filter var(--tap-out) ease-out}
+.btn2{background:none;color:var(--ink);border:0;border-radius:0!important;border-bottom:2px solid var(--ink);padding:8px 0;box-shadow:none;font-weight:800}
+label:has(input[type=radio]),label:has(input[type=checkbox]),select,summary,[role=option],.row:has(>.btn2~.btn2)>.btn2,label.btn2{min-width:44px;min-height:48px;padding:10px 16px;border:1px solid var(--ink);border-radius:10px!important;background:var(--paper);color:var(--ink);cursor:pointer;box-shadow:none}
 label:has(input[type=radio]),label:has(input[type=checkbox]){display:flex;align-items:center;gap:8px}
 label:has(input[type=radio])>*,label:has(input[type=checkbox])>*{margin-top:0}
 summary{display:list-item}option{background:var(--paper);color:var(--ink)}
 .row:has(>.btn2~.btn2)>.btn2{flex:1 1 100%;justify-content:flex-start;text-align:left}
-:where(button,input,textarea,select,a,summary,[tabindex],[role=button]):focus-visible{outline:2px solid var(--ink);outline-offset:4px}
-:disabled,[aria-disabled=true]{cursor:not-allowed;text-decoration:line-through}
-/* 状態名が変わっても反転は同じ。sheet の on は開閉専用。 */
-:is(.active,.on,.selected,.is-active,[aria-pressed="true"],[aria-selected="true"],[data-selected],input:checked+*,label:has(input:checked)):not(#sheet){background:var(--ink);color:var(--paper);border-color:var(--ink)}
+select{appearance:none;background-image:none}
+/* 押下。scale(.94) は4本の分解で全部一致した唯一の値。70ms で沈め、影を潰す。 */
+:is(button,[role=button],input[type=submit],input[type=button],input[type=reset],.btn,.btn2,summary,label:has(input[type=radio]),label:has(input[type=checkbox]),[role=option],.filepick):active{transform:scale(.94);filter:brightness(.93);box-shadow:0 1px 0 color-mix(in srgb,#000 42%,var(--main));transition-duration:var(--tap-in);transition-timing-function:cubic-bezier(.4,0,1,1)}
+:is(summary,label:has(input[type=radio]),label:has(input[type=checkbox]),[role=option],.btn2){transition:transform var(--tap-out) var(--settle),background 120ms ease-out}
+/* 離した瞬間に 1.00 を追い越して戻る。縮むだけだと「へこんだ」で終わる。
+   :active の戻り transition では出せない——移動量が 6% しかないので、
+   曲線が 10% 跳ねても見かけは 0.6% で消える。だから keyframes を1本流す。 */
+@keyframes tapback{0%{transform:scale(.94);animation-timing-function:cubic-bezier(.16,1,.3,1)}50%{transform:scale(1.05);animation-timing-function:cubic-bezier(.33,0,.67,1)}100%{transform:scale(1)}}
+.tapback{animation:tapback 180ms both}
+:where(button,input,textarea,select,a,summary,[tabindex],[role=button]):focus-visible{outline:3px solid var(--ink);outline-offset:3px}
+/* 無効は取り消し線をやめ、**地の色に沈める**（ツムツムは無効をグレーにせず地の青に沈める）。
+   厚みを外すので「押せない」が形で分かる。線を引くと「あった物を消した」に読める。 */
+:disabled,[aria-disabled=true]{cursor:not-allowed;background:color-mix(in srgb,var(--ink) 5%,var(--paper))!important;color:var(--muted)!important;border-color:transparent!important;box-shadow:none!important;text-decoration:none;filter:none}
+/* 選ばれたものは Main に反転する。選ぶ＝進む側だから色は同じでいい。
+   なった瞬間に 160ms だけ跳ねる（:has が一致した瞬間に animation が走る）。 */
+:is(.active,.on,.selected,.is-active,[aria-pressed="true"],[aria-selected="true"],[data-selected],input:checked+*,label:has(input:checked)):not(#sheet){background:var(--main);color:var(--on-main);border-color:var(--main);animation:pick 160ms cubic-bezier(.34,1.56,.64,1)}
+@keyframes pick{0%{transform:scale(1)}55%{transform:scale(1.06)}100%{transform:scale(1)}}
 :where(p,li,td) a{display:inline!important;min-width:0!important;min-height:0!important;padding:0!important}
-/* 空の操作部品や入力欄は消さず、空の入れ物だけ潰す。 */
 :where(div,section,article,aside,nav,header,footer,main,p,ul,ol,dl,pre,blockquote,fieldset,output):empty:not([role]):not([contenteditable]){display:none!important}
 [hidden],input[type=hidden]{display:none!important}
-.filepick{display:inline-flex;align-items:center;gap:12px;min-height:44px;padding:10px 20px;background:var(--ink);color:var(--paper);font-size:14px;cursor:pointer}
+.filepick{display:inline-flex;align-items:center;gap:12px;min-height:48px;padding:10px 20px;border-radius:10px!important;background:var(--main);color:var(--on-main);font-size:14px;font-weight:800;cursor:pointer;box-shadow:0 3px 0 color-mix(in srgb,#000 42%,var(--main));transition:transform var(--tap-out) var(--settle),box-shadow var(--tap-out) ease-out}
 .filepick input[type=file]{position:absolute;width:1px;height:1px;opacity:0;pointer-events:none}
-.filepick .filename{color:var(--paper);font-size:13px}
-#fab{position:fixed;left:0;right:0;bottom:0;z-index:9;margin:0;width:100%;min-height:56px;padding:16px 32px;text-align:left;background:var(--paper);color:var(--ink);border:0;border-top:1px solid var(--rule);font-size:14px}
-#fab::after{content:"▸";float:right;color:var(--muted)}
-main{padding-bottom:88px}
-#sheet{display:none;position:fixed;inset:0;z-index:10;margin:0;background:color-mix(in srgb,var(--ink) 32%,transparent);color:var(--ink)}
+.filepick .filename{color:var(--on-main);font-size:13px;font-weight:500}
+
+/* ===== 下のバーと、仮置きのシート ============================================
+   ポケモンGO: 情報は上、親指は下。だから件数は下に置いたまま、
+   **数字だけを大きくした**（20px/900）。ラベル「仮置き」は 11px＝数字の 55%。
+   これは読ませる語ではない。数字だけが飛び込めばいい。 */
+#fab{position:fixed;left:0;right:0;bottom:0;z-index:9;margin:0;display:flex;align-items:center;gap:8px;width:100%;min-height:60px;padding:12px 32px;text-align:left;background:var(--paper);color:var(--ink);border:0;border-radius:0!important;border-top:1px solid var(--rule);box-shadow:none;font-size:14px}
+#fab:active{transform:none;filter:none;box-shadow:none;background:color-mix(in srgb,var(--ink) 6%,var(--paper))}
+#fab .fabn{font-family:var(--num);font-size:20px;font-weight:900;line-height:1;font-variant-numeric:tabular-nums}
+#fab .fabl{font-size:11px;font-weight:700;color:var(--muted);letter-spacing:.04em}
+#fab::after{content:"▸";margin-left:auto;color:var(--muted)}
+#sheet{display:none;position:fixed;inset:0;z-index:10;margin:0;background:color-mix(in srgb,var(--ink) 38%,transparent);color:var(--ink)}
 #sheet.on{display:block}body:has(#sheet.on){overflow:hidden}
 #sheet>div{position:absolute;right:0;top:0;bottom:0;width:min(704px,100%);margin:0;padding:0 32px 32px;overflow-y:auto;overscroll-behavior:contain;background:var(--paper);border-left:1px solid var(--rule)}
 #sheet .sheet-head{position:sticky;top:0;z-index:1;display:flex;align-items:center;justify-content:space-between;gap:16px;margin:0;padding:16px 0;background:var(--paper);border-bottom:1px solid var(--rule)}
-#sheet .sheet-head>*{margin:0}#sheet h2{font-family:var(--read);font-weight:400}
-#sclose{border:0;border-bottom:2px solid var(--ink);background:none;color:var(--ink);padding:8px 0;flex-shrink:0}
-.as{margin-top:32px}.as>b{display:block;font:400 22px/1.6 var(--read)}
+#sheet .sheet-head>*{margin:0}#sheet h2{font:800 23px/1.4 var(--ui)}
+#sclose{border:0;border-radius:0!important;border-bottom:2px solid var(--ink);background:none;color:var(--ink);padding:8px 0;flex-shrink:0;box-shadow:none}
+.as{margin-top:32px}.as>b{display:block;font:800 20px/1.6 var(--ui)}
 .as .why{color:var(--muted);font-size:14px}
-/* 押した瞬間に見た目が変わる（80-120ms）。処理の開始を演出待ちにしない。[P02] */
-:is(button,[role=button],input[type=submit],input[type=button],.btn,.btn2,summary,.filepick,label:has(input[type=radio]),label:has(input[type=checkbox])){transition:transform 160ms ease-out,opacity 160ms ease-out}
-:is(button,[role=button],input[type=submit],input[type=button],.btn,.btn2,summary,.filepick,label:has(input[type=radio]),label:has(input[type=checkbox])):active{transform:scale(.97);opacity:.84;transition-duration:90ms}
-/* 完了は局所的に、短く（300-500ms）。全画面を覆わない。毎回の紙吹雪はしない。[P02] */
-.done{display:inline-block;margin-top:8px;padding:4px 12px;background:var(--ink);color:var(--paper);font-size:13px;animation:done 320ms ease-out}
-@keyframes done{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
-/* 動きを減らす設定では、意味を静止の文字で残す。[S24] */
-@media(prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
-.hi,.risk,.blank{color:var(--red)}.hi{font-family:var(--ui);font-size:14px;font-variant-emoji:text}
-@media(max-width:640px){body>header,main{padding:16px}main{padding-bottom:88px}h1{font-size:28px}.big{font-size:24px}#sheet>div{padding:0 16px 32px}}
+/* 赤は文字と帯だけ。面にしない。 */
+.hi,.risk,.blank{color:var(--red)}.hi{font-size:14px;font-weight:800;font-variant-emoji:text}
+@media(max-width:640px){body>header,main{padding:16px}main{padding-bottom:92px}h1{font-size:26px}.big{font-size:22px}#sheet>div{padding:0 16px 32px}#fab{padding:12px 16px}}
+/* 動きは1か所で全部止まる。 */
+@media(prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}}
 """
 
-SHEET_JS = """
-document.getElementById('fab').onclick=()=>document.getElementById('sheet').classList.add('on');
-document.getElementById('sheet').onclick=e=>{if(e.target.id==='sheet'||e.target.id==='sclose')
-document.getElementById('sheet').classList.remove('on')};
-/* **押した→増えた→言う、を枠側で出す。** [P02 入力・処理・成功を分けて伝える]
-   モデルが完了表示を書き忘れても、一覧が増えたことは必ず言葉になる。
-   成功を祝う言葉にしない。どこに残ったかだけを言う。 */
-(()=>{let pressed=null;const q='li,tbody>tr';
-addEventListener('pointerdown',e=>{const b=e.target.closest(
-'button,[role=button],input[type=submit],.btn,.btn2');if(b&&!b.closest('#sheet'))pressed=b;},true);
-let before=document.querySelectorAll(q).length;
-new MutationObserver(()=>{const now=document.querySelectorAll(q).length;
-if(now>before&&pressed){const n=document.createElement('span');n.className='done';
-n.textContent='この端末に保存しました';const host=pressed.closest('form,.card')||pressed.parentNode;
-if(host&&!host.querySelector('.done'))host.appendChild(n);setTimeout(()=>n.remove(),2600);pressed=null;}
-before=now;},).observe(document.body,{childList:true,subtree:true});})();
-/* 選んだファイル名を出す。出さないと押した結果が分からない。 */
-document.querySelectorAll('.filepick input[type=file]').forEach(i=>i.onchange=()=>{
-const n=i.parentNode.querySelector('.filename');if(n)n.textContent=i.files[0]?i.files[0].name:'';});
+FRAME_JS = """
+(function(){
+var RM=matchMedia('(prefers-reduced-motion: reduce)').matches;
+var TAP='button,[role=button],input[type=submit],input[type=button],input[type=reset],'+
+        '.btn,.btn2,summary,[role=option],.filepick,label:has(input[type=radio]),'+
+        'label:has(input[type=checkbox])';
+
+/* 1. 押し返し。:active の戻りだけでは overshoot が出ない（移動量 6% のため）。
+      離した瞬間に 180ms の keyframes を1本流す。クラス名に依存せず委譲で効かせる。 */
+addEventListener('pointerup',function(e){
+  if(RM) return;
+  var b=e.target.closest&&e.target.closest(TAP);
+  if(!b||b.id==='fab'||b.disabled) return;
+  b.classList.remove('tapback'); void b.offsetWidth; b.classList.add('tapback');
+  b.addEventListener('animationend',function(){b.classList.remove('tapback');},{once:true});
+},true);
+
+/* 2. 増えたものを見せる。モデルが何を書いても「押したら一覧が増えた」が目に見える。
+      - 1度に 8件を超えたら動かさない（追加ではなく作り直しなので）
+      - 同じ親は 400ms に1回まで（入力のたびに絞り込む画面でちらつかせない）
+      ポケモンGO の「順次出現は 1件30msずらし、最大8件まで」を、teatime では
+      40ms / 8件（ツムツムの連鎖 stagger と同値）に寄せた。 */
+if(!RM&&window.MutationObserver){
+  var queue=[], timer=null, last=new WeakMap();
+  new MutationObserver(function(recs){
+    for(var i=0;i<recs.length;i++){
+      var r=recs[i];
+      if(!r.addedNodes.length) continue;
+      if(r.target.id==='sheet'||r.target.id==='fab') continue;
+      for(var j=0;j<r.addedNodes.length;j++){
+        var n=r.addedNodes[j];
+        if(n.nodeType===1&&n.animate) queue.push(n);
+      }
+    }
+    if(queue.length){clearTimeout(timer);timer=setTimeout(flush,0);}
+  }).observe(document.body,{childList:true,subtree:true});
+  function flush(){
+    var nodes=queue.splice(0,queue.length);
+    if(nodes.length>8) return;                 /* 作り直し。動かさない */
+    var now=Date.now(), k=0;
+    for(var i=0;i<nodes.length;i++){
+      var el=nodes[i], p=el.parentNode;
+      if(!el.isConnected||el.offsetParent===null) continue;
+      if(p&&last.get(p)&&now-last.get(p)<400) continue;
+      if(p) last.set(p,now);
+      el.animate([{transform:'translateY(-10px) scale(.98)',opacity:0},
+                  {transform:'none',opacity:1}],
+                 {duration:220,delay:(k++)*40,
+                  easing:'cubic-bezier(.2,.9,.3,1.15)',fill:'backwards'});
+    }
+  }
+}
+
+/* 3. 仮置きのシート。**出るときは勢いよく、閉じるときは目立たせず消す。**
+      人は「出た」は見たいが「消えた」は見たくない。閉じに余韻があると
+      「まだ終わっていない」と読まれる。
+      横から出る面にオーバーシュートは掛けない——画面の端に隙間が開くため。 */
+var fab=document.getElementById('fab'), sheet=document.getElementById('sheet');
+if(fab&&sheet){
+  var panel=sheet.firstElementChild;
+  fab.onclick=function(){
+    sheet.classList.add('on');
+    if(RM) return;
+    sheet.animate([{opacity:0},{opacity:1}],{duration:180,easing:'ease-out'});
+    panel.animate([{transform:'translateX(100%)'},{transform:'none'}],
+                  {duration:260,easing:'cubic-bezier(.16,1,.3,1)'});
+  };
+  var shut=function(){
+    if(RM){sheet.classList.remove('on');return;}
+    sheet.animate([{opacity:1},{opacity:0}],
+                  {duration:140,easing:'cubic-bezier(.4,0,1,1)'})
+         .onfinish=function(){sheet.classList.remove('on');};
+  };
+  sheet.onclick=function(e){if(e.target.id==='sheet'||e.target.id==='sclose')shut();};
+}
+
+/* 4. 選んだファイル名を出す。出さないと押した結果が分からない。 */
+document.querySelectorAll('.filepick input[type=file]').forEach(function(i){
+  i.onchange=function(){
+    var n=i.parentNode.querySelector('.filename');
+    if(n)n.textContent=i.files[0]?i.files[0].name:'';};
+});
+})();
 """
 
 
@@ -232,8 +327,10 @@ def _sheet(assumptions):
             f'<div class="why">なぜ: {_h.escape(str(a.get("why", "")))}'
             f'<br>確かめ方: {_h.escape(str(a.get("how_to_check", "")))}</div></div>')
     n = len(ordered)
+    # **件数は数字だけが飛び込めばいい。** ラベル「仮置き」は数字の 55%・muted。
     return (
-        f'<button id="fab" type="button" aria-controls="sheet">仮置き {n}</button>'
+        '<button id="fab" type="button" aria-controls="sheet">'
+        f'<span class="fabn">{n}</span><span class="fabl">仮置き</span></button>'
         '<div id="sheet"><div role="region" aria-labelledby="sheet-title">'
         '<div class="sheet-head"><h2 id="sheet-title">仮置き</h2>'
         '<button id="sclose" class="btn2" type="button">閉じる</button></div>'
@@ -420,7 +517,8 @@ def build(transcript, structured, on_step=None):
         sacrificed=sacrificed,
         assumptions=json.dumps(assumptions, ensure_ascii=False, indent=1),
         transcript=transcript[:6000])))  # **画面は考える工程**（決めたことを画面に訳す）。ローカルでは決定を落とした（2026-10-28）
-    markup = _jp_file(markup)
+    # **初回も refine も同じ手で絞る。** 片方だけに掛けると初回が素通りする
+    markup = _one_primary(_jp_file(markup))
 
     def ask_js(role, err=""):
         prompt = JS_PROMPT.format(mvp=mvp, markup=markup)
@@ -455,7 +553,7 @@ def build(transcript, structured, on_step=None):
             f'<header>プロトタイプ ・ 議論「{_h.escape(topic)}」から生成</header>'
             f"<main>{body}</main>"
             + _sheet(assumptions)
-            + f"<script>{js}\n{SHEET_JS}</script></body></html>")
+            + f"<script>{js}\n{FRAME_JS}</script></body></html>")
 
     page = assemble(markup)
     if on_step:

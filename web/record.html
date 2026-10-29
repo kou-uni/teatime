@@ -5,75 +5,179 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>teatime — 議論の記録</title>
 <style>
-:root{color-scheme:light dark;--paper:#f4f1ea;--ink:#23201c;--muted:#6f6a60;--rule:#ded8c9;--red:#9b3b2f;--read:"Hiragino Mincho ProN","Yu Mincho",YuMincho,"Noto Serif JP",serif;--ui:-apple-system,"Hiragino Sans","Yu Gothic","Noto Sans JP",sans-serif}
-@media(prefers-color-scheme:dark){:root{--paper:#14130f;--ink:#e9e4d8;--muted:#948d80;--rule:#2e2a23;--red:#d08477}}
+/* ===== 1. 地色と書体 =========================================================
+   明朝を全廃した。この画面は「机に置いて、ちらっと見る」＝ゲームと同じ条件。
+   和文=ヒラギノ 800（macOS は W8、iOS は W6+合成）／数字=ui-rounded 900。
+   ui-rounded は iOS/macOS 標準の SF Pro Rounded。和文には効かない＝
+   「和文と数字で丸みが別」というツムツム・ウマ娘と同じ分担が、ダウンロード0で出る。
+   --main #3f6b26（抹茶）: 紙 #f4f1ea の文字で 5.57:1。押せる面にしか使わない。 */
+:root{
+  color-scheme:light dark;
+  --paper:#f4f1ea;--ink:#23201c;--muted:#6f6a60;--rule:#ded8c9;--red:#9b3b2f;
+  --main:#3f6b26;--on-main:#f4f1ea;
+  --ui:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Hiragino Kaku Gothic ProN","Noto Sans JP","Yu Gothic Medium",sans-serif;
+  --num:ui-rounded,-apple-system,"SF Pro Rounded","Hiragino Sans","Noto Sans JP",sans-serif;
+  --tap-in:70ms;--tap-out:180ms;--settle:cubic-bezier(.34,1.56,.64,1);
+}
+@media(prefers-color-scheme:dark){:root{--paper:#14130f;--ink:#e9e4d8;--muted:#948d80;--rule:#2e2a23;--red:#d08477;--main:#7fb34a;--on-main:#14130f}}
+
+/* 角丸の規則（ポケモンGO実測の逆転を移植）:
+   小さい＝つまめるモノ＝丸める / 大きい＝下敷き＝丸めない。
+   「角丸があるもの＝指で触れるもの」を一意にする。装飾として足さない。 */
 *{box-sizing:border-box;border-radius:0}
-body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--ui);font-size:16px;line-height:1.6;letter-spacing:normal}
-h1,p{margin:0}h1{font-family:var(--read);font-size:32px;font-weight:400;line-height:1.6}
-a{color:inherit}button,a{touch-action:manipulation}button{font:inherit;cursor:pointer}
-button:focus-visible,a:focus-visible{outline:2px solid var(--ink);outline-offset:4px}
-.page{width:100%;max-width:704px;min-height:100svh;margin:0 auto;padding:32px;display:flex;flex-direction:column}
-.masthead{display:flex;justify-content:space-between;align-items:baseline;gap:16px;padding-bottom:16px;border-bottom:1px solid var(--rule);color:var(--muted);font-size:12px}
-.brand{color:var(--ink);font-size:24px;letter-spacing:.04em}
-.main{flex:1;display:flex;flex-direction:column;justify-content:center;align-items:stretch;gap:16px;padding:32px 0}
-.eyebrow{font-size:12px;color:var(--muted);margin-bottom:8px}
+body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--ui);
+  font-size:16px;line-height:1.6;font-weight:500;-webkit-text-size-adjust:100%}
+h1,p{margin:0}
+h1{font-size:30px;font-weight:800;line-height:1.45;letter-spacing:.01em}
+a{color:inherit}
+button,a{touch-action:manipulation;-webkit-tap-highlight-color:transparent}
+button{font:inherit;cursor:pointer}
+button:focus-visible,a:focus-visible{outline:3px solid var(--ink);outline-offset:3px}
+
+/* ===== 2. タップの手応え ======================================================
+   4本の分解で一致した値だけを採った。押下 scale(.94) は4本全部一致。
+   戻りの cubic-bezier(.34,1.56,.64,1) は3本一致。
+   ただし :active の戻り transition だけでは overshoot は出ない——
+   移動量が 6% しかないので、曲線が 10% 跳ねても見かけは 0.6%。消える。
+   だから「離した瞬間に 180ms の keyframes を1本流す」。これが手応えの本体。
+   縮むだけだと「へこんだ」。1.00 を一度追い越すから「押し返された」になる。 */
+@keyframes tapback{
+  0%{transform:scale(.94);animation-timing-function:cubic-bezier(.16,1,.3,1)}
+  50%{transform:scale(1.05);animation-timing-function:cubic-bezier(.33,0,.67,1)}
+  100%{transform:scale(1)}}
+button{transition:transform var(--tap-out) var(--settle),filter var(--tap-out) ease-out}
+button:active{transform:scale(.94);filter:brightness(.93);
+  transition-duration:var(--tap-in);transition-timing-function:cubic-bezier(.4,0,1,1)}
+button.tapback{animation:tapback 180ms both}
+
+.page{width:100%;max-width:704px;min-height:100svh;margin:0 auto;padding:32px;
+  display:flex;flex-direction:column}
+.masthead{display:flex;justify-content:space-between;align-items:baseline;gap:16px;
+  padding-bottom:16px;border-bottom:1px solid var(--rule);color:var(--muted);font-size:12px}
+.brand{color:var(--ink);font-size:24px;font-weight:800;letter-spacing:.04em}
+.main{flex:1;display:flex;flex-direction:column;justify-content:center;align-items:stretch;
+  gap:16px;padding:32px 0}
+.eyebrow{font-size:12px;color:var(--muted);margin-bottom:8px;font-weight:700}
 .sub,.hint,#msg{font-size:14px;color:var(--muted);text-align:left;overflow-wrap:anywhere}
 .sub{margin-top:8px}.hint{width:100%}
 .state-rec,.state-busy,.state-done{display:none}
-#go{display:flex;flex-direction:column;align-items:center;justify-content:center;align-self:center;flex-shrink:0;width:176px;height:176px;border:0;border-radius:50%;background:var(--ink);color:var(--paper);font-size:22px}
-#t{display:none;align-self:center;font-size:32px;font-variant-numeric:tabular-nums;letter-spacing:.04em;line-height:1.5}
+
+/* ===== 3. 「はじめる」＝捕獲ボタン相当 ========================================
+   ポケモンGO の投げボタンは直径 115pt＝画面幅の27.9%・ほぼ厳密に中央。
+   176px は 390px 幅の 45%——歩きながらではなく机に置いて押すので、大きいまま残す。
+   変えたのは色（墨→抹茶＝進む色）と、押し返し。 */
+#go{display:flex;flex-direction:column;align-items:center;justify-content:center;
+  align-self:center;flex-shrink:0;width:176px;height:176px;border:0;border-radius:50%;
+  background:var(--main);color:var(--on-main);font-size:22px;font-weight:800;letter-spacing:.06em}
+/* 録音中は「進む色」を外す。飽和色は意味を持つ点にしか置かない（モンストの機構）。 */
+body[data-s=rec] #go{background:var(--ink);color:var(--paper)}
+
+#t{display:none;align-self:center;font-family:var(--num);font-size:34px;font-weight:900;
+  font-variant-numeric:tabular-nums;letter-spacing:.02em;line-height:1.4}
 #msg:empty{display:none}
-#x{display:none;align-self:flex-start;min-width:44px;min-height:44px;padding:8px 0;border:0;border-bottom:2px solid var(--ink);background:none;color:var(--ink);font-size:13px}
+#x{display:none;align-self:flex-start;min-width:44px;min-height:44px;padding:8px 0;
+  border:0;border-bottom:2px solid var(--ink);background:none;color:var(--ink);
+  font-size:13px;font-weight:700}
 #x.arm{color:var(--red);border-bottom-color:var(--red)}
-#prog{display:none;width:100%}
-#prog .row{display:flex;align-items:center;gap:8px;min-height:32px;padding:4px 0 4px 8px;border-left:2px solid var(--rule);color:var(--muted);font-size:13px;line-height:1.5}
-#prog .row>div:nth-child(2){order:0;flex:1;min-width:0;overflow-wrap:anywhere}
-/* JS の記号を状態語に替える。 */
-#prog .ic{order:1;flex:0 0 40px;font-size:0}
-#prog .ic::after{content:"未着手";font-size:11px}
-#prog .sec{order:2;flex:0 0 36px;text-align:right;font-size:11px;color:var(--muted);font-variant-numeric:tabular-nums}
-#prog .row.done{color:var(--ink)}#prog .row.done .ic::after{content:"済み"}
-#prog .row.run{border-left-color:var(--ink);color:var(--ink);font-weight:650}
-#prog .row.run .ic::after{content:"作成中"}
-#prog .row.fail{border-left-color:var(--red);color:var(--red)}#prog .row.fail .ic::after{content:"失敗"}
-#prog .row.cancel .ic::after{content:"中止"}#prog .row.cancel>div:nth-child(2){text-decoration:line-through}
-#found{display:none;font-size:12px;line-height:1.6;color:var(--muted);overflow-wrap:anywhere}
+
+/* ===== 4. 待ち時間（6〜7分）==================================================
+   禁止: スピナー / 残り秒数 / 「生成中…」の点滅。
+   どれも「何も起きていない」ことを秒単位で証明し続ける表示（ツムツム機構①）。
+   置くのは3つだけ:
+     (a) 何かが進んでいる  → カードが積まれ、数字が跳ねる、いまの行の罫が呼吸する
+     (b) 次に何が来るか    → のこりの工程名を先に3つ出す
+     (c) 終わりが読める    → 画面最上部の細い帯（副次。主役にしない） */
+#bar{display:none;position:fixed;left:0;right:0;top:0;height:3px;z-index:5;
+  background:color-mix(in srgb,var(--ink) 10%,var(--paper))}
+#bar>i{display:block;height:100%;width:0;background:var(--main);
+  transition:width 420ms cubic-bezier(.22,1,.36,1)}
+body[data-s=busy] #bar{display:block}
+
+/* 大きい数字とラベル。ポケモンGO実測の組版をそのまま移植:
+   ラベルは数字の 48%（44px→21px）、明度で大きく引き離す。
+   PoGO は L* で 1.72 倍の差。teatime の 墨 L*12.4 / muted L*45.0 は 3.62 倍＝さらに強い。
+   「できたこと」という語は読ませる気がない。数字だけが飛び込む。 */
+#count{display:none;align-items:baseline;gap:12px}
+body[data-s=busy] #count{display:flex}
+#n{font-family:var(--num);font-size:44px;font-weight:900;line-height:1;
+  font-variant-numeric:tabular-nums;color:var(--ink);letter-spacing:-.01em}
+#count .lab{font-size:21px;font-weight:700;color:var(--muted);line-height:1.2}
+.plus{position:fixed;z-index:20;font-family:var(--num);font-size:20px;font-weight:900;
+  color:var(--main);pointer-events:none;will-change:transform,opacity}
+
+/* いま動いている工程。点滅させない。左罫だけが 2,400ms で呼吸する。
+   速い点滅は「処理中」の記号になる。遅い呼吸は「生きている」だけを言う。 */
+#now{display:none;position:relative;align-items:center;gap:12px;min-height:44px;
+  padding-left:14px;font-size:17px;font-weight:800;color:var(--ink)}
+body[data-s=busy] #now{display:flex}
+#now:empty{display:none!important}
+#now::before{content:"";position:absolute;left:0;top:4px;bottom:4px;width:3px;
+  background:var(--main);animation:breathe 2400ms ease-in-out infinite}
+@keyframes breathe{0%,100%{opacity:1}50%{opacity:.35}}
+#rem{display:none;font-size:13px;color:var(--muted);line-height:1.6}
+body[data-s=busy] #rem{display:block}
+
+/* 積まれるカード。新しいものが上。
+   ツムツムのツムが降る動きと同じ向き（上から入る）。
+   13枚が約7分で積まれる＝平均32秒に1枚。ウマ娘の「30秒ごとに1行カード」とほぼ同じ刻み。 */
+#feed{display:none;flex-direction:column;gap:0}
+body[data-s=busy] #feed{display:flex}
+#feed .card{display:flex;align-items:baseline;gap:12px;padding:10px 0;
+  border-bottom:1px solid var(--rule);font-size:14px;line-height:1.5}
+#feed .card .ck{flex:0 0 auto;font-family:var(--num);font-size:12px;font-weight:900;
+  color:var(--main);letter-spacing:.04em}
+#feed .card .cm{flex:1;min-width:0;overflow-wrap:anywhere;font-weight:700;color:var(--ink)}
+#feed .card .cs{flex:0 0 auto;font-family:var(--num);font-size:12px;font-weight:700;
+  color:var(--muted);font-variant-numeric:tabular-nums}
+#feed .card.found .ck{color:var(--muted)}
+#feed .card.found .cm{font-weight:500;color:var(--muted)}
+#feed .card.fail .ck,#feed .card.fail .cm{color:var(--red)}
+
 .links{display:none;flex-direction:column;align-items:flex-start;gap:16px}
-a.primary,a.ghost{min-height:44px;min-width:44px;padding:8px 0;font-size:15px;font-weight:650;text-decoration:none}
-a.primary{width:100%;padding:16px;background:var(--ink);color:var(--paper);text-align:center}
+a.primary,a.ghost{min-height:44px;min-width:44px;padding:8px 0;font-size:15px;
+  font-weight:800;text-decoration:none;transition:transform var(--tap-out) var(--settle)}
+a.primary:active,a.ghost:active{transform:scale(.96);transition-duration:var(--tap-in)}
+a.primary{width:100%;padding:16px;background:var(--main);color:var(--on-main);
+  text-align:center;border-radius:10px}
 a.ghost{border-bottom:2px solid var(--ink)}
 .foot{border-top:1px solid var(--rule);padding-top:8px;color:var(--muted);font-size:11px}
-.foot a{display:inline-flex;align-items:center;min-height:44px;min-width:44px;font-size:13px;text-decoration:none;border-bottom:2px solid var(--ink)}
+.foot a{display:inline-flex;align-items:center;min-height:44px;min-width:44px;
+  font-size:13px;font-weight:700;text-decoration:none;border-bottom:2px solid var(--ink)}
 .foot p{margin-top:8px}
+
 body[data-s=rec] .state-idle,body[data-s=busy] .state-idle{display:none}
 body[data-s=rec] .state-rec,body[data-s=busy] .state-busy{display:block}
 body[data-s=rec] #t{display:block}body[data-s=rec] #t:empty::before{content:"00:00"}
-body[data-s=rec] #go::after{content:"";width:8px;height:8px;margin-top:16px;background:var(--paper);clip-path:circle(50%);animation:pulse 1.6s infinite}
+body[data-s=rec] #go::after{content:"";width:10px;height:10px;margin-top:14px;
+  background:var(--paper);clip-path:circle(50%);animation:pulse 1.6s infinite}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.25}}
 body[data-s=rec] #x,body[data-s=busy] #x{display:block}
-body[data-s=busy] .main{justify-content:flex-start;gap:8px;padding:16px 0}
+/* busy では見出しを主役から降ろす。最大の活字は「いま起きたこと」＝数字に渡す（モンストの機構）。 */
+body[data-s=busy] h1{font-size:18px;color:var(--muted);font-weight:700}
+body[data-s=busy] .main{justify-content:flex-start;gap:16px;padding:16px 0}
 body[data-s=busy] #go,body[data-s=busy] .hint{display:none}
-body[data-s=busy] #x{order:5}
-/* 既存 JS は完了後も idle。リンク表示を完了の目印にする。 */
+body[data-s=busy] #x{order:9;margin-top:8px}
 body:is([data-s=done],[data-s=idle]:has(#links[style*="flex"])) .state-idle{display:none}
 body:is([data-s=done],[data-s=idle]:has(#links[style*="flex"])) .state-done{display:block}
-body:is([data-s=done],[data-s=idle]:has(#links[style*="flex"])) #prog,
+body:is([data-s=done],[data-s=idle]:has(#links[style*="flex"])) #feed,
+body:is([data-s=done],[data-s=idle]:has(#links[style*="flex"])) #count,
 body:is([data-s=done],[data-s=idle]:has(#links[style*="flex"])) .hint{display:none!important}
 body:is([data-s=done],[data-s=idle]:has(#links[style*="flex"])) #go{order:6;width:96px;height:96px;font-size:16px}
 body[data-s=done] #links{display:flex}
-@media(max-width:640px){.page{padding:16px}h1{font-size:26px}.main{padding:32px 0}.eyebrow{margin-bottom:4px}}
-@media(max-width:640px){body[data-s=busy] .masthead{padding-bottom:8px}body[data-s=busy] .main{gap:4px;padding:8px 0}body[data-s=busy] #prog .row{min-height:28px}body[data-s=busy] #found{font-size:11px}body[data-s=busy] .foot p{margin-top:4px}}
-/* 押した瞬間に見た目が変わる（80-120ms）。一番大きいボタンに手応えが無いのは致命的。[P02] */
-#go,.links a,#x,.foot a{transition:transform 160ms ease-out,opacity 160ms ease-out}
-#go:active,.links a:active,#x:active,.foot a:active{transform:scale(.96);opacity:.86;transition-duration:90ms}
-/* 待っている6〜7分に、見つかったものを1件ずつ渡す。[P03 安全な小成功を先に渡す] */
-#found div{animation:found 360ms ease-out}
-@keyframes found{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
-@media(prefers-reduced-motion:reduce){body[data-s=rec] #go::after,#found div{animation:none}
-#go,.links a,#x,.foot a{transition:none}}
+@media(max-width:640px){.page{padding:16px}h1{font-size:25px}.main{padding:32px 0}
+  .eyebrow{margin-bottom:4px}#n{font-size:40px}#count .lab{font-size:19px}}
+@media(max-width:640px){body[data-s=busy] .masthead{padding-bottom:8px}
+  body[data-s=busy] .main{gap:12px;padding:8px 0}body[data-s=busy] .foot p{margin-top:4px}}
+/* 全部の動きは1か所で止まる。 */
+@media(prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;
+    transition-duration:.01ms!important}
+  body[data-s=rec] #go::after{animation:none;opacity:1}
+  #now::before{animation:none;opacity:1}}
 </style>
 </head>
 <body data-s="idle">
+<div id="bar" aria-hidden="true"><i></i></div>
 <div class="page">
 <header class="masthead"><span class="brand">teatime</span><span>茶の時間</span></header>
 <main class="main">
@@ -87,9 +191,11 @@ body[data-s=done] #links{display:flex}
 <button id="go" type="button">はじめる</button>
 <p class="hint"><span class="state-idle">終わったら、もう一度タップ。</span><span class="state-rec">終わったら「おわる」を押して、席を外してください。</span></p>
 <div id="msg" role="status" aria-live="polite"></div>
+<div id="count" aria-live="polite"><span id="n">0</span><span class="lab">できたこと</span></div>
+<div id="now" aria-label="いま作っているもの"></div>
+<div id="rem"></div>
+<div id="feed" aria-label="できあがった順"></div>
 <button id="x" type="button">やめる（残さない）</button>
-<div id="prog" aria-label="作成の工程"></div>
-<div id="found" aria-label="ここまでに見つかったもの"></div>
 <nav class="links" id="links" aria-label="できたもの">
 <a class="primary" id="rep" href="#">できたものを見る</a>
 <a class="ghost" id="proto" href="#">プロトタイプを触る</a>
@@ -100,10 +206,65 @@ body[data-s=done] #links{display:flex}
 <script>
 let mr, chunks=[], t0, tick, stream;
 const $=(i)=>document.getElementById(i), go=$('go'), msg=$('msg'), rep=$('rep');
-const prog=$('prog'), found=$('found'), links=$('links'), proto=$('proto');
-let t1=0, bump=null, jobId=null, quit=false, upload=null, arm=null;
-const x=$('x');
+const links=$('links'), proto=$('proto'), x=$('x');
+const feed=$('feed'), nEl=$('n'), nowEl=$('now'), remEl=$('rem'), bar=$('bar').firstElementChild;
+let jobId=null, quit=false, upload=null, arm=null;
 const fmt=(s)=>`${String(Math.floor(s/60)).padStart(2,'0')}:${String(s%60).padStart(2,'0')}`;
+const RM=matchMedia('(prefers-reduced-motion: reduce)');
+
+/* 押し返し。:active の戻りだけでは移動量が小さすぎて overshoot が見えないので、
+   離した瞬間に 180ms の keyframes を1本流す。委譲で全ボタンに効かせる。 */
+addEventListener('pointerup',e=>{
+  const b=e.target.closest('button'); if(!b||RM.matches) return;
+  b.classList.remove('tapback'); void b.offsetWidth; b.classList.add('tapback');
+  b.addEventListener('animationend',()=>b.classList.remove('tapback'),{once:true});
+},true);
+
+/* 触覚。iOS Safari は navigator.vibrate を実装していないので、効いたらおまけ扱い。
+   録音中（data-s=rec）は絶対に呼ばない——端末は机に接触しており、
+   筐体の振動がそのまま録音に入る。手応えのために音を汚さない。 */
+function buzz(p){ if(document.body.dataset.s==='rec') return;
+  try{ navigator.vibrate && navigator.vibrate(p); }catch(e){} }
+
+/* ---- 積まれるカード -------------------------------------------------------- */
+const seen=new Set(); let cards=0, flyQ=0;
+function pushCard(key,mark,text,sec,cls){
+  if(seen.has(key)) return; seen.add(key);
+  const el=document.createElement('div');
+  el.className='card'+(cls?' '+cls:'');
+  el.innerHTML='<span class="ck"></span><span class="cm"></span><span class="cs"></span>';
+  el.children[0].textContent=mark; el.children[1].textContent=text;
+  el.children[2].textContent=sec||'';
+  feed.prepend(el);
+  cards++;
+  if(RM.matches){ nEl.textContent=cards; return; }
+  el.animate([{transform:'translateY(-10px) scale(.97)',opacity:0},{transform:'none',opacity:1}],
+             {duration:220,easing:'cubic-bezier(.2,.9,.3,1.15)',fill:'both'});
+  /* 連鎖は 40ms ずつずらす。同時に出すと1回の出来事に見える（ツムツム）。 */
+  const d=flyQ++*40; setTimeout(()=>{flyQ--; fly(el);}, d);
+}
+/* 数字が消えた場所から合計へ飛ぶ。因果が見えるから、いきなり増えるのとは別物になる。
+   出現160ms(.6→1.25→1.0 back-out) → 滞留120ms → 吸込320ms → 着弾120ms。計600ms。 */
+function fly(from){
+  const a=from.getBoundingClientRect(), b=nEl.getBoundingClientRect();
+  if(!a.width||!b.width){ nEl.textContent=cards; return; }
+  const x0=a.left+16, y0=a.top-2;   /* 行の上に出す。印の字に重ねない */
+  const dx=(b.left+b.width/2)-x0, dy=(b.top+b.height/2)-y0;
+  const s=document.createElement('span'); s.className='plus'; s.textContent='+1';
+  s.style.left=x0+'px'; s.style.top=y0+'px'; document.body.appendChild(s);
+  s.animate([
+    {offset:0,    transform:'translate(-50%,-50%) scale(.6)', opacity:0, easing:'cubic-bezier(.34,1.56,.64,1)'},
+    {offset:.267, transform:'translate(-50%,-50%) scale(1)',  opacity:1, easing:'linear'},
+    {offset:.467, transform:'translate(-50%,-50%) scale(1)',  opacity:1, easing:'cubic-bezier(.55,0,.1,1)'},
+    {offset:.867, transform:`translate(${dx*.93}px,${dy*.93}px) translate(-50%,-50%) scale(.72)`,opacity:1,easing:'linear'},
+    {offset:1,    transform:`translate(${dx}px,${dy}px) translate(-50%,-50%) scale(.6)`, opacity:0}
+  ],{duration:600,fill:'both'}).onfinish=()=>s.remove();
+  setTimeout(()=>{
+    nEl.textContent=cards;
+    nEl.animate([{transform:'scale(1.18)'},{transform:'scale(1)'}],
+                {duration:120,easing:'cubic-bezier(.16,1,.3,1)'});
+  },520);
+}
 
 go.onclick = async () => {
   if (document.body.dataset.s === 'rec') return stop();
@@ -113,7 +274,9 @@ go.onclick = async () => {
       echoCancellation:false, noiseSuppression:false, autoGainControl:true}});
   } catch (e) { msg.textContent = 'マイクが使えません（'+e.name+'）。HTTPS で開いているか確認してください。'; return; }
   chunks=[]; quit=false; jobId=null;
-  links.style.display='none'; prog.style.display='none'; found.style.display='none';
+  links.style.display='none';
+  seen.clear(); cards=0; feed.innerHTML=''; nEl.textContent='0';
+  nowEl.textContent=''; remEl.textContent=''; bar.style.width='0';
   const mime = ['audio/mp4','audio/webm;codecs=opus','audio/webm'].find(m=>MediaRecorder.isTypeSupported(m));
   mr = new MediaRecorder(stream, mime?{mimeType:mime}:undefined);
   mr.ondataavailable = e => e.data.size && chunks.push(e.data);
@@ -125,7 +288,7 @@ go.onclick = async () => {
 };
 
 function stop(){ clearInterval(tick); mr.stop(); stream.getTracks().forEach(t=>t.stop());
-  document.body.dataset.s='busy'; go.textContent='お茶へ'; }
+  document.body.dataset.s='busy'; go.textContent='お茶へ'; buzz(18); }
 
 async function send(){
   const blob = new Blob(chunks, {type: mr.mimeType||'audio/mp4'});
@@ -139,46 +302,45 @@ async function send(){
             msg.textContent='送れませんでした: '+e.message; document.body.dataset.s='idle';
             go.textContent='はじめる'; return; }
   jobId = r.id;
-  if (quit) return cancelJob();  // 送っている最中にやめた。届いてしまった分を消す
-  msg.textContent='お茶をどうぞ。席を外して大丈夫です。';
-  prog.style.display='block'; t1=Date.now();
-  bump=setInterval(()=>{const e=prog.querySelector('.row.run .sec');
-    if(e) e.textContent=fmt(Math.floor((Date.now()-t1)/1000));}, 1000);
+  if (quit) return cancelJob();
+  /* 時間の刻みを最初に1回だけ宣言する（ポケモンGO「60分後に、あの場所に」）。
+     2回目からは黙る——初回は見せ、2回目以降は選ばせる（ウマ娘）。 */
+  msg.textContent = localStorage.getItem('tt.done')
+    ? 'お茶をどうぞ。席を外して大丈夫です。'
+    : 'お茶をどうぞ。席を外して大丈夫です。だいたい6〜7分で、ここに積まれます。';
   poll(r.id);
 }
 
-let lastRun='';
+/* draw は 2秒ごとに呼ばれる。innerHTML を作り直すと CSS/WAAPI の動きが2秒ごとに
+   巻き戻るので、**差分だけ**を触る。増えた done をカードにして落とす。 */
 function draw(steps){
-  prog.innerHTML = steps.map(s=>{
-    const ic = s.state==='done'?'✓' : s.state==='fail'?'!' : '';
-    const sec = s.state==='done'&&s.sec ? fmt(s.sec) : '';
-    return `<div class="row ${s.state}"><div class="ic">${ic}</div>`+
-           `<div>${s.label}</div><div class="sec">${sec}</div></div>`;
-  }).join('');
-  const run = steps.find(s=>s.state==='run');
-  if (run && run.key!==lastRun){ lastRun=run.key; t1=Date.now(); }
+  const total=steps.length;
+  let done=0, run=null;
+  steps.forEach(s=>{
+    if(s.state==='done'){ done++;
+      pushCard('s:'+s.key,'できた',s.label, s.sec?fmt(s.sec):'', ''); }
+    else if(s.state==='fail'){ pushCard('f:'+s.key,'しくじり',s.label,'','fail'); }
+    else if(s.state==='run'&&!run){ run=s; }
+  });
+  bar.style.width = Math.round(done/total*100)+'%';
+  nowEl.textContent = run ? run.label : '';
+  const rest = steps.filter(s=>s.state==='wait').map(s=>s.label);
+  remEl.textContent = rest.length
+    ? 'のこり '+rest.length+' ・ '+rest.slice(0,3).join(' / ')+(rest.length>3?' …':'')
+    : '';
 }
 
+/* 掴んだものも同じ山に積む。工程と区別はするが、別の数にしない——
+   横串の1数値（ウマ娘④）。何が起きても同じ数が動くこと自体が報酬になる。 */
 function drawFound(r){
-  const bits=[];
-  if (r.chars) bits.push('文字起こし '+r.chars+'字');
-  if (r.topic) bits.push('主題: '+r.topic);
-  if (r.abandonments!==undefined) bits.push('放棄点 '+r.abandonments+
-    '（理由が言葉になっていない '+r.unverbalized+'）');
-  if (r.gaps!==undefined) bits.push('埋めるべき空白 '+r.gaps);
-  if (r.assumptions!==undefined) bits.push('仮置き '+r.assumptions);
-  if (!bits.length) return;
-  found.style.display='block';
-  // **増えた分だけ足す。** 毎回描き直すと、全部が点滅して何が新しいか分からない
-  const have = [...found.children].map(e=>e.textContent);
-  bits.forEach(b=>{ const line='・'+b;
-    if (have.includes(line)) return;
-    const old = [...found.children].find(e=>e.textContent.split(' ')[0]===line.split(' ')[0]);
-    if (old) { old.textContent = line; return; }
-    const d=document.createElement('div'); d.textContent=line; found.appendChild(d); });
+  if (r.chars) pushCard('v:chars','拾った','文字起こし '+r.chars+'字','','found');
+  if (r.topic) pushCard('v:topic','掴んだ','主題: '+r.topic,'','found');
+  if (r.abandonments!==undefined) pushCard('v:ab','掴んだ',
+    '捨てた案 '+r.abandonments+'（理由が言葉になっていない '+r.unverbalized+'）','','found');
+  if (r.gaps!==undefined) pushCard('v:gaps','掴んだ','埋めるべき空白 '+r.gaps,'','found');
+  if (r.assumptions!==undefined) pushCard('v:as','置いた','仮置き '+r.assumptions,'','found');
 }
 
-// 「やっぱやめる」。誤タップで議論を失わないよう、2回押したときだけ捨てる
 x.onclick = () => {
   if (!arm){
     x.classList.add('arm');
@@ -197,7 +359,7 @@ x.onclick = () => {
 };
 function disarm(){ clearTimeout(arm); arm=null; x.classList.remove('arm');
   x.textContent='やめる（残さない）'; }
-function reset(text){ clearInterval(bump); document.body.dataset.s='idle';
+function reset(text){ document.body.dataset.s='idle';
   go.textContent='はじめる'; $('t').textContent=''; msg.textContent=text; }
 async function cancelJob(){
   reset('やめています。いま動いている1歩が終わったら、録音ごと消します。');
@@ -207,29 +369,31 @@ async function cancelJob(){
 }
 
 async function poll(id){
-  if (id!==jobId) return;  // 次の回を始めたら、前の回は追わない
+  if (id!==jobId) return;
   let r; try { r = await (await fetch('/status?id='+id)).json(); }
   catch(e){ return setTimeout(()=>poll(id), 4000); }
   if (r.steps) draw(r.steps);
   drawFound(r);
 
   if (r.state === 'cancelled'){
-    prog.style.display='none'; found.style.display='none';
     msg.textContent='やめました。録音も途中のものも消しました。'; return; }
   if (quit && r.state !== 'done' && r.state !== 'error')
     return setTimeout(()=>poll(id), 2000);
   if (r.state === 'done'){
-    clearInterval(bump);
+    bar.style.width='100%'; nowEl.textContent=''; remEl.textContent='';
     msg.textContent='できました。';
     rep.href=r.url; proto.href=r.proto||'#';
     proto.style.display = r.proto ? 'block':'none';
     links.style.display='flex';
     document.body.dataset.s='idle'; go.textContent='もう一度'; $('t').textContent='';
+    try{ localStorage.setItem('tt.done','1'); }catch(e){}
+    buzz([18,60,18]);
     return;
   }
-  if (r.state === 'error'){ clearInterval(bump);
+  if (r.state === 'error'){
     msg.textContent='しくじりました: '+r.error;
-    document.body.dataset.s='idle'; go.textContent='はじめる'; return; }
+    document.body.dataset.s='idle'; go.textContent='はじめる'; return;
+  }
   setTimeout(()=>poll(id), 2000);
 }
 </script></body></html>
