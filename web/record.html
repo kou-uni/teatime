@@ -14,12 +14,12 @@
 :root{
   color-scheme:light dark;
   --paper:#f4f1ea;--ink:#23201c;--muted:#6f6a60;--rule:#ded8c9;--red:#9b3b2f;
-  --main:#3f6b26;--on-main:#f4f1ea;
+  --main:#23201c;--on-main:#f4f1ea;
   --ui:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Hiragino Kaku Gothic ProN","Noto Sans JP","Yu Gothic Medium",sans-serif;
   --num:ui-rounded,-apple-system,"SF Pro Rounded","Hiragino Sans","Noto Sans JP",sans-serif;
   --tap-in:70ms;--tap-out:180ms;--settle:cubic-bezier(.34,1.56,.64,1);
 }
-@media(prefers-color-scheme:dark){:root{--paper:#14130f;--ink:#e9e4d8;--muted:#948d80;--rule:#2e2a23;--red:#d08477;--main:#7fb34a;--on-main:#14130f}}
+@media(prefers-color-scheme:dark){:root{--paper:#14130f;--ink:#e9e4d8;--muted:#948d80;--rule:#2e2a23;--red:#d08477;--main:#e9e4d8;--on-main:#14130f}}
 
 /* 角丸の規則（ポケモンGO実測の逆転を移植）:
    小さい＝つまめるモノ＝丸める / 大きい＝下敷き＝丸めない。
@@ -28,7 +28,7 @@
 body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--ui);
   font-size:16px;line-height:1.6;font-weight:500;-webkit-text-size-adjust:100%}
 h1,p{margin:0}
-h1{font-size:30px;font-weight:800;line-height:1.45;letter-spacing:.01em}
+h1{font-size:30px;font-weight:650;line-height:1.45;letter-spacing:.01em}
 a{color:inherit}
 button,a{touch-action:manipulation;-webkit-tap-highlight-color:transparent}
 button{font:inherit;cursor:pointer}
@@ -54,7 +54,7 @@ button.tapback{animation:tapback 180ms both}
   display:flex;flex-direction:column}
 .masthead{display:flex;justify-content:space-between;align-items:baseline;gap:16px;
   padding-bottom:16px;border-bottom:1px solid var(--rule);color:var(--muted);font-size:12px}
-.brand{color:var(--ink);font-size:24px;font-weight:800;letter-spacing:.04em}
+.brand{color:var(--ink);font-size:24px;font-weight:650;letter-spacing:.04em}
 .main{flex:1;display:flex;flex-direction:column;justify-content:center;align-items:stretch;
   gap:16px;padding:32px 0}
 .eyebrow{font-size:12px;color:var(--muted);margin-bottom:8px;font-weight:700}
@@ -68,7 +68,7 @@ button.tapback{animation:tapback 180ms both}
    変えたのは色（墨→抹茶＝進む色）と、押し返し。 */
 #go{display:flex;flex-direction:column;align-items:center;justify-content:center;
   align-self:center;flex-shrink:0;width:176px;height:176px;border:0;border-radius:50%;
-  background:var(--main);color:var(--on-main);font-size:22px;font-weight:800;letter-spacing:.06em}
+  background:var(--main);color:var(--on-main);font-size:22px;font-weight:650;letter-spacing:.06em}
 /* 録音中は「進む色」を外す。飽和色は意味を持つ点にしか置かない（モンストの機構）。 */
 body[data-s=rec] #go{background:var(--ink);color:var(--paper)}
 
@@ -108,7 +108,7 @@ body[data-s=busy] #count{display:flex}
 /* いま動いている工程。点滅させない。左罫だけが 2,400ms で呼吸する。
    速い点滅は「処理中」の記号になる。遅い呼吸は「生きている」だけを言う。 */
 #now{display:none;position:relative;align-items:center;gap:12px;min-height:44px;
-  padding-left:14px;font-size:17px;font-weight:800;color:var(--ink)}
+  padding-left:14px;font-size:17px;font-weight:650;color:var(--ink)}
 body[data-s=busy] #now{display:flex}
 #now:empty{display:none!important}
 #now::before{content:"";position:absolute;left:0;top:4px;bottom:4px;width:3px;
@@ -135,7 +135,7 @@ body[data-s=busy] #feed{display:flex}
 
 .links{display:none;flex-direction:column;align-items:flex-start;gap:16px}
 a.primary,a.ghost{min-height:44px;min-width:44px;padding:8px 0;font-size:15px;
-  font-weight:800;text-decoration:none;transition:transform var(--tap-out) var(--settle)}
+  font-weight:650;text-decoration:none;transition:transform var(--tap-out) var(--settle)}
 a.primary:active,a.ghost:active{transform:scale(.96);transition-duration:var(--tap-in)}
 a.primary{width:100%;padding:16px;background:var(--main);color:var(--on-main);
   text-align:center;border-radius:10px}

@@ -115,8 +115,8 @@ JS_FIX_PROMPT = """
 """
 
 CSS = """
-:root{color-scheme:light dark;--paper:#f4f1ea;--ink:#23201c;--muted:#6f6a60;--rule:#ded8c9;--red:#9b3b2f;--main:#3f6b26;--on-main:#f4f1ea;--ui:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Hiragino Kaku Gothic ProN","Noto Sans JP","Yu Gothic Medium",sans-serif;--num:ui-rounded,-apple-system,"SF Pro Rounded","Hiragino Sans","Noto Sans JP",sans-serif;--tap-in:70ms;--tap-out:180ms;--settle:cubic-bezier(.34,1.56,.64,1)}
-@media(prefers-color-scheme:dark){:root{--paper:#14130f;--ink:#e9e4d8;--muted:#948d80;--rule:#2e2a23;--red:#d08477;--main:#7fb34a;--on-main:#14130f}}
+:root{color-scheme:light dark;--paper:#f4f1ea;--ink:#23201c;--muted:#6f6a60;--rule:#ded8c9;--red:#9b3b2f;--main:#23201c;--on-main:#f4f1ea;--ui:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Hiragino Kaku Gothic ProN","Noto Sans JP","Yu Gothic Medium",sans-serif;--num:ui-rounded,-apple-system,"SF Pro Rounded","Hiragino Sans","Noto Sans JP",sans-serif;--tap-in:70ms;--tap-out:180ms;--settle:cubic-bezier(.34,1.56,.64,1)}
+@media(prefers-color-scheme:dark){:root{--paper:#14130f;--ink:#e9e4d8;--muted:#948d80;--rule:#2e2a23;--red:#d08477;--main:#e9e4d8;--on-main:#14130f}}
 /* 角丸は役割。読むものは0、**指で触れるものだけ 10px**、バーは完全な丸端。
    ポケモンGO 実測の逆転（一覧カード19pt／詳細シート5.7pt）＝
    小さい板はつまめるモノ、大きい板は下敷き。だから面には足さない。 */
@@ -131,9 +131,9 @@ main{margin-top:0;padding-bottom:88px}
 body{padding-bottom:64px}
 /* 明朝は全廃。この画面は読むためではなく触るためにある。 */
 h1{font:800 30px/1.35 var(--ui)}
-h2,.big{font-size:23px;font-weight:800;line-height:1.5}
-h3{font-size:19px;font-weight:800}h4{font-size:17px;font-weight:800}
-strong,b{font-weight:800}
+h2,.big{font-size:23px;font-weight:650;line-height:1.5}
+h3{font-size:19px;font-weight:650}h4{font-size:17px;font-weight:650}
+strong,b{font-weight:650}
 main>:is(div,section,article,form)+:is(div,section,article,form){margin-top:56px}
 .card,blockquote{background:none;border:0;padding:0}
 .row{display:flex;flex-wrap:wrap;align-items:center;gap:16px}
@@ -147,8 +147,8 @@ main>:is(div,section,article,form)+:is(div,section,article,form){margin-top:56px
 .row>.btn2{flex:0 1 auto}
 .mut,.tag{color:var(--muted);font-size:14px}.tag{font-size:12px;font-weight:700}
 ul,ol{padding-left:28px}li+li{margin-top:8px}
-dt{font-weight:800}dd{margin-top:4px}
-fieldset{min-width:0;padding:0;border:0}legend{padding:0;font-weight:800}
+dt{font-weight:650}dd{margin-top:4px}
+fieldset{min-width:0;padding:0;border:0}legend{padding:0;font-weight:650}
 label{display:block}label>input,label>select,label>textarea{margin-top:8px}
 pre{white-space:pre-wrap;overflow-wrap:anywhere}pre,code,kbd,samp{font-family:var(--ui);font-size:14px}
 img,video,canvas,svg{max-width:100%;height:auto}
@@ -157,9 +157,9 @@ img,video,canvas,svg{max-width:100%;height:auto}
 table,output,time,progress,meter,.big{font-variant-numeric:tabular-nums}
 table{width:100%;table-layout:fixed;border-collapse:collapse;font:14px/1.6 var(--ui)}
 th,td{padding:10px 8px;text-align:left;vertical-align:top;border-bottom:1px solid var(--rule)}
-th{font-weight:800;font-size:12px;color:var(--muted)}caption{text-align:left;margin-bottom:8px;font-weight:800}
+th{font-weight:650;font-size:12px;color:var(--muted)}caption{text-align:left;margin-bottom:8px;font-weight:650}
 /* バーだけは高さの半分で丸める（ポケモンGO: バーは全部これ）。 */
-progress,meter,[role=progressbar]{border-radius:999px!important;overflow:hidden}
+progress,meter,[role=progressbar]{border-radius:0!important;overflow:hidden}
 a{display:inline-flex;align-items:center;min-width:44px;min-height:44px;padding:8px 0;color:inherit;text-underline-offset:4px;touch-action:manipulation}
 /* 入力は薄い沈み。触っている間だけ下罫が Main に変わる＝
    「触れた対象そのものが変化する」。リップルは要らない（押した場所は本人が知っている）。 */
@@ -175,9 +175,9 @@ input[type=radio]:checked::before,input[type=checkbox]:checked::before{content:"
    ので、色数は増えていない。
    影は blur 0 のハード影＝「ぼけた浮き」ではなく**板の厚み**。押すと 3px→1px に縮む。
    触れる前に「押せば沈む」を予告しているのはこの厚みで、装飾ではない。 */
-button,[role=button],input[type=submit],input[type=button],input[type=reset],.btn,input::file-selector-button{display:inline-flex;align-items:center;justify-content:center;width:auto;min-width:44px;min-height:48px;max-width:100%;padding:10px 20px;border:1px solid var(--main);border-radius:10px!important;background:var(--main);color:var(--on-main);font:inherit;font-weight:800;cursor:pointer;text-decoration:none;text-align:center;touch-action:manipulation;white-space:normal;box-shadow:0 3px 0 color-mix(in srgb,#000 42%,var(--main));transition:transform var(--tap-out) var(--settle),box-shadow var(--tap-out) ease-out,filter var(--tap-out) ease-out}
-.btn2{background:none;color:var(--ink);border:0;border-radius:0!important;border-bottom:2px solid var(--ink);padding:8px 0;box-shadow:none;font-weight:800}
-label:has(input[type=radio]),label:has(input[type=checkbox]),select,summary,[role=option],.row:has(>.btn2~.btn2)>.btn2,label.btn2{min-width:44px;min-height:48px;padding:10px 16px;border:1px solid var(--ink);border-radius:10px!important;background:var(--paper);color:var(--ink);cursor:pointer;box-shadow:none}
+button,[role=button],input[type=submit],input[type=button],input[type=reset],.btn,input::file-selector-button{display:inline-flex;align-items:center;justify-content:center;width:auto;min-width:44px;min-height:48px;max-width:100%;padding:10px 20px;border:1px solid var(--main);border-radius:0!important;background:var(--main);color:var(--on-main);font:inherit;font-weight:650;cursor:pointer;text-decoration:none;text-align:center;touch-action:manipulation;white-space:normal;box-shadow:none;transition:transform var(--tap-out) var(--settle),box-shadow var(--tap-out) ease-out,filter var(--tap-out) ease-out}
+.btn2{background:none;color:var(--ink);border:0;border-radius:0!important;border-bottom:2px solid var(--ink);padding:8px 0;box-shadow:none;font-weight:650}
+label:has(input[type=radio]),label:has(input[type=checkbox]),select,summary,[role=option],.row:has(>.btn2~.btn2)>.btn2,label.btn2{min-width:44px;min-height:48px;padding:10px 16px;border:1px solid var(--ink);border-radius:0!important;background:var(--paper);color:var(--ink);cursor:pointer;box-shadow:none}
 label:has(input[type=radio]),label:has(input[type=checkbox]){display:flex;align-items:center;gap:8px}
 label:has(input[type=radio])>*,label:has(input[type=checkbox])>*{margin-top:0}
 summary{display:list-item}option{background:var(--paper);color:var(--ink)}
@@ -202,7 +202,7 @@ select{appearance:none;background-image:none}
 :where(p,li,td) a{display:inline!important;min-width:0!important;min-height:0!important;padding:0!important}
 :where(div,section,article,aside,nav,header,footer,main,p,ul,ol,dl,pre,blockquote,fieldset,output):empty:not([role]):not([contenteditable]){display:none!important}
 [hidden],input[type=hidden]{display:none!important}
-.filepick{display:inline-flex;align-items:center;gap:12px;min-height:48px;padding:10px 20px;border-radius:10px!important;background:var(--main);color:var(--on-main);font-size:14px;font-weight:800;cursor:pointer;box-shadow:0 3px 0 color-mix(in srgb,#000 42%,var(--main));transition:transform var(--tap-out) var(--settle),box-shadow var(--tap-out) ease-out}
+.filepick{display:inline-flex;align-items:center;gap:12px;min-height:48px;padding:10px 20px;border-radius:0!important;background:var(--main);color:var(--on-main);font-size:14px;font-weight:650;cursor:pointer;box-shadow:none;transition:transform var(--tap-out) var(--settle),box-shadow var(--tap-out) ease-out}
 .filepick input[type=file]{position:absolute;width:1px;height:1px;opacity:0;pointer-events:none}
 .filepick .filename{color:var(--on-main);font-size:13px;font-weight:500}
 
@@ -224,7 +224,7 @@ select{appearance:none;background-image:none}
 .as{margin-top:32px}.as>b{display:block;font:800 20px/1.6 var(--ui)}
 .as .why{color:var(--muted);font-size:14px}
 /* 赤は文字と帯だけ。面にしない。 */
-.hi,.risk,.blank{color:var(--red)}.hi{font-size:14px;font-weight:800;font-variant-emoji:text}
+.hi,.risk,.blank{color:var(--red)}.hi{font-size:14px;font-weight:650;font-variant-emoji:text}
 @media(max-width:640px){body>header,main{padding:16px}main{padding-bottom:92px}h1{font-size:26px}.big{font-size:22px}#sheet>div{padding:0 16px 32px}#fab{padding:12px 16px}}
 /* 動きは1か所で全部止まる。 */
 @media(prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}}
