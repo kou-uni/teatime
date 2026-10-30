@@ -61,7 +61,7 @@ def _discard(audio):
 
 def _work(job_id, audio):
     """**進行を1歩ずつ外に出す。** 黙って動いているものは、止まっているのと見分けがつかない。"""
-    from . import deliver, extract, model, prototype, render, transcribe
+    from . import deliver, extract, model, prototype, render, share, transcribe
     model.reset_usage()  # **頭で数え直す。** 前の回の退避を次の回に引きずらない
     job = JOBS[job_id]
     steps = [{"key": k, "label": l, "state": "wait", "sec": 0} for k, l in STEPS]
@@ -138,11 +138,18 @@ def _work(job_id, audio):
                     if s_["key"] == "video":
                         s_["state"] = "fail"
 
+        # **外に送る1枚。** モデルを呼ばないので、落ちる余地はほぼ無い
+        shared = None
+        try:
+            shared = f"/out/{share.write(OUT / audio.stem).name}"
+        except Exception:  # noqa: BLE001
+            traceback.print_exc()
+
         if job.get("cancel"):
             raise Cancelled()
         finish()
         job.update(state="done", url=f"/out/{audio.stem}.html",
-                   proto=proto["url"], video=mp4, stem=audio.stem,
+                   proto=proto["url"], video=mp4, stem=audio.stem, share=shared,
                    assumptions=len(proto["assumptions"]))
     except Cancelled:
         _discard(audio)
@@ -288,6 +295,7 @@ class H(BaseHTTPRequestHandler):
                 ctype = {".html": "text/html; charset=utf-8",
                          ".mp4": "video/mp4",
                          ".m4a": "audio/mp4",
+                         ".png": "image/png",
                          ".json": "application/json; charset=utf-8"
                          }.get(f.suffix, "text/plain; charset=utf-8")
                 return self._send_file(f, ctype)

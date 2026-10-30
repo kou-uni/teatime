@@ -9,7 +9,7 @@ import pathlib
 import sys
 import time
 
-from . import deliver, extract, model, prototype, render
+from . import deliver, extract, model, prototype, render, share
 
 AUDIO = {".m4a", ".mp3", ".wav", ".mp4", ".aac", ".caf", ".webm", ".ogg"}
 
@@ -64,6 +64,8 @@ def tea(path, keys=None, video=False, out_dir=None):
         except Exception as error:  # noqa: BLE001
             # **資料は渡す。** 動画は5つ目の成果物で、これが無くても回は成立する
             print(f"動画は作れませんでした（{type(error).__name__}: {error}）")
+
+    print(f"外に見せる1枚: {share.write(out_dir / src.stem)}")
 
     m = structured["metrics"]
     deterministic = sum(r.get("type") == "rebuilt" and r.get("source") == "taste"

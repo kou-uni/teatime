@@ -42,7 +42,8 @@ color:var(--mut);font-size:12px}
 
 # 何がどの名前で置かれるか。出す順。
 PARTS = [
-    ("{s}.html", "レポート", "btn"),
+    ("{s}.share.html", "外に見せる1枚", "btn"),
+    ("{s}.html", "レポート", "btn2"),
     ("{s}.proto.html", "プロトタイプ", "btn2"),
     ("{s}.mp4", "動画", "btn2"),
     ("{s}.review.md", "振り返り", "btn2"),

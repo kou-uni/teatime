@@ -200,6 +200,7 @@ body[data-s=done] #links{display:flex}
 <button id="x" type="button">やめる（残さない）</button>
 <nav class="links" id="links" aria-label="できたもの">
 <a class="primary" id="rep" href="#">できたものを見る</a>
+<a class="ghost" id="rep2" href="#" style="display:none">作ったものを全部見る</a>
 <a class="ghost" id="proto" href="#">プロトタイプを触る</a>
 <a class="ghost" id="vid" href="#" style="display:none">解説動画を見る</a>
 <button class="ghost" id="rev" type="button" style="display:none">振り返りを録る</button>
@@ -209,7 +210,7 @@ body[data-s=done] #links{display:flex}
 </div>
 <script>
 let mr, chunks=[], t0, tick, stream;
-const $=(i)=>document.getElementById(i), go=$('go'), msg=$('msg'), rep=$('rep');
+const $=(i)=>document.getElementById(i), go=$('go'), msg=$('msg'), rep=$('rep'), rep2=$('rep2');
 const links=$('links'), proto=$('proto'), x=$('x');
 const feed=$('feed'), nEl=$('n'), nowEl=$('now'), remEl=$('rem'), bar=$('bar').firstElementChild;
 let jobId=null, quit=false, upload=null, arm=null;
@@ -406,10 +407,12 @@ async function poll(id){
       rep.href=r.url; rep.textContent='振り返りを読む';
       proto.href=r.video||'#'; proto.textContent='振り返りの動画';
       proto.style.display = r.video ? 'block':'none';
-      vid.style.display='none'; rev.style.display='none';
+      vid.style.display='none'; rev.style.display='none'; rep2.style.display='none';
     } else {
       msg.textContent='できました。';
-      rep.href=r.url; rep.textContent='できたものを見る';
+      if (r.share){ rep.href=r.share; rep.textContent='この回を人に送る';
+                    rep2.href=r.url; rep2.style.display='block'; }
+      else { rep.href=r.url; rep.textContent='できたものを見る'; rep2.style.display='none'; }
       proto.href=r.proto||'#'; proto.textContent='プロトタイプを触る';
       proto.style.display = r.proto ? 'block':'none';
       vid.href = r.video||'#';
