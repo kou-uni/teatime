@@ -32,6 +32,10 @@ font-size:17px;line-height:1.7;font-weight:500;-webkit-text-size-adjust:100%}
 .mast{display:flex;justify-content:space-between;align-items:baseline;gap:12px;
 padding-bottom:14px;border-bottom:1px solid var(--rule);color:var(--mut);font-size:12px}
 .brand{color:var(--ink);font-size:20px;font-weight:650;letter-spacing:.04em}
+/* **プロトだと先に言う。** 読み終えてから気づかせない */
+.proto{margin:18px 0 0;padding:12px 14px;border:1px dashed var(--rule);
+color:var(--mut);font-size:13px;line-height:1.7}
+.proto b{color:var(--ink)}
 .topic{color:var(--mut);font-size:13px;margin:22px 0 10px}
 h1{font-size:31px;line-height:1.42;font-weight:650;margin:0;letter-spacing:.01em}
 .cond{margin:14px 0 0;font-size:18px;font-weight:650;color:var(--ac);line-height:1.6}
@@ -140,6 +144,10 @@ def build(stem):
 <style>{CSS}</style></head><body>
 <div class="page">
 <header class="mast"><span class="brand">teatime</span><span>{when}</span></header>
+
+<p class="proto"><b>これはプロトタイプです。</b>1回の議論の録音だけから、
+機械が自動で書いています。人の手は入っていません。足りないところは
+<b>「未入力」</b>と出ます。</p>
 
 <p class="topic">{e(d.get("topic") or "")}</p>
 <h1>{e(adopted)}</h1>
