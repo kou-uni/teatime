@@ -57,10 +57,13 @@ def tea(path, keys=None, video=False, out_dir=None):
     dest.write_text(page, encoding="utf-8")
 
     if video:
-        from . import narrate
-        print("動画を作っています…")
-        mp4 = narrate.build(out_dir / src.stem, structured, docs)
-        print(f"動画: {mp4}")
+        print("解説動画を作っています…")
+        try:
+            from . import narrate
+            print(f"動画: {narrate.build(out_dir / src.stem, structured, docs)}")
+        except Exception as error:  # noqa: BLE001
+            # **資料は渡す。** 動画は5つ目の成果物で、これが無くても回は成立する
+            print(f"動画は作れませんでした（{type(error).__name__}: {error}）")
 
     m = structured["metrics"]
     deterministic = sum(r.get("type") == "rebuilt" and r.get("source") == "taste"
@@ -84,8 +87,8 @@ def tea(path, keys=None, video=False, out_dir=None):
 
 if __name__ == "__main__":
     if len(sys.argv) < 3 or sys.argv[1] != "tea":
-        sys.exit("使い方: python3 -m teatime.cli tea <transcript.txt|audio.m4a> [doc,doc] [--video]\n  動画を作るときは .venv/bin/python で実行してください（Pillow が要ります）")
+        sys.exit("使い方: python3 -m teatime.cli tea <transcript.txt|audio.m4a> [doc,doc] [--no-video]\n  解説動画まで作るので .venv/bin/python で実行してください（Pillow が要ります）")
     args = sys.argv[3:]
-    video = "--video" in args
+    video = "--no-video" not in args   # **既定で作る。** 切るのは --no-video
     only = next((a.split(",") for a in args if not a.startswith("--")), None)
     tea(sys.argv[2], only, video)

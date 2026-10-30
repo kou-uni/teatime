@@ -201,6 +201,7 @@ body[data-s=done] #links{display:flex}
 <nav class="links" id="links" aria-label="できたもの">
 <a class="primary" id="rep" href="#">できたものを見る</a>
 <a class="ghost" id="proto" href="#">プロトタイプを触る</a>
+<a class="ghost" id="vid" href="#" style="display:none">解説動画を見る</a>
 <button class="ghost" id="rev" type="button" style="display:none">振り返りを録る</button>
 </nav>
 </main>
@@ -213,7 +214,7 @@ const links=$('links'), proto=$('proto'), x=$('x');
 const feed=$('feed'), nEl=$('n'), nowEl=$('now'), remEl=$('rem'), bar=$('bar').firstElementChild;
 let jobId=null, quit=false, upload=null, arm=null;
 /* 本編（tea）と振り返り（review）は同じ画面・同じ山。送り先だけが違う。 */
-let mode='tea', curStem=null; const rev=$('rev');
+let mode='tea', curStem=null; const rev=$('rev'), vid=$('vid');
 const fmt=(s)=>`${String(Math.floor(s/60)).padStart(2,'0')}:${String(s%60).padStart(2,'0')}`;
 const RM=matchMedia('(prefers-reduced-motion: reduce)');
 
@@ -405,12 +406,14 @@ async function poll(id){
       rep.href=r.url; rep.textContent='振り返りを読む';
       proto.href=r.video||'#'; proto.textContent='振り返りの動画';
       proto.style.display = r.video ? 'block':'none';
-      rev.style.display='none';
+      vid.style.display='none'; rev.style.display='none';
     } else {
       msg.textContent='できました。';
       rep.href=r.url; rep.textContent='できたものを見る';
       proto.href=r.proto||'#'; proto.textContent='プロトタイプを触る';
       proto.style.display = r.proto ? 'block':'none';
+      vid.href = r.video||'#';
+      vid.style.display = r.video ? 'block':'none';
       curStem = r.stem||null;
       rev.style.display = curStem ? 'block':'none';
     }

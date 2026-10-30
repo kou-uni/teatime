@@ -64,8 +64,8 @@ def _work(job_id, audio):
     model.reset_usage()  # **頭で数え直す。** 前の回の退避を次の回に引きずらない
     job = JOBS[job_id]
     steps = [{"key": k, "label": l, "state": "wait", "sec": 0} for k, l in STEPS]
-    if os.environ.get("TEATIME_VIDEO") == "1":
-        steps.append({"key": "video", "label": "動画", "state": "wait", "sec": 0})
+    if os.environ.get("TEATIME_VIDEO") != "0":   # **既定で作る。** 切るのは TEATIME_VIDEO=0
+        steps.append({"key": "video", "label": "解説動画", "state": "wait", "sec": 0})
     job["steps"] = steps
     clock = {"t": time.time()}
 
@@ -125,10 +125,17 @@ def _work(job_id, audio):
         (OUT / f"{audio.stem}.html").write_text(page, encoding="utf-8")
 
         mp4 = None
-        if os.environ.get("TEATIME_VIDEO") == "1":
+        if os.environ.get("TEATIME_VIDEO") != "0":
             step("video")
-            from . import narrate
-            mp4 = f"/out/{narrate.build(OUT / audio.stem, structured, docs).name}"
+            # **動画で落ちても、できた資料は渡す。** ここだけ例外を飲む
+            try:
+                from . import narrate
+                mp4 = f"/out/{narrate.build(OUT / audio.stem, structured, docs).name}"
+            except Exception:  # noqa: BLE001
+                traceback.print_exc()
+                for s_ in steps:
+                    if s_["key"] == "video":
+                        s_["state"] = "fail"
 
         if job.get("cancel"):
             raise Cancelled()
