@@ -11,6 +11,7 @@ import json
 import os
 import pathlib
 import re
+import shutil
 import ssl
 import subprocess
 import threading
@@ -226,6 +227,51 @@ class H(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(b)
 
+    def _send_file(self, f, ctype):
+        """**スマホで動画を見るには Range が要る。**
+
+        iOS Safari は mp4 を必ず Range で取りに来る。206 を返せない相手の動画は、
+        全部まとめて送っても再生されない（黒いまま、あるいは再生ボタンが死ぬ）。
+        ここが無いと「動画はできているのに、スマホでだけ見られない」になる。
+        """
+        size = f.stat().st_size
+        m = re.match(r"bytes=(\d*)-(\d*)$", self.headers.get("Range") or "")
+        if not m:
+            self.send_response(200)
+            self.send_header("Content-Type", ctype)
+            self.send_header("Content-Length", str(size))
+            self.send_header("Accept-Ranges", "bytes")
+            self.end_headers()
+            with f.open("rb") as fh:
+                shutil.copyfileobj(fh, self.wfile)
+            return
+        a, b = m.group(1), m.group(2)
+        if a == "":                      # bytes=-N → 末尾 N バイト
+            start, end = max(0, size - int(b or 0)), size - 1
+        else:
+            start = int(a)
+            end = min(int(b), size - 1) if b else size - 1
+        if start >= size or start > end:
+            self.send_response(416)
+            self.send_header("Content-Range", f"bytes */{size}")
+            self.end_headers()
+            return
+        self.send_response(206)
+        self.send_header("Content-Type", ctype)
+        self.send_header("Content-Range", f"bytes {start}-{end}/{size}")
+        self.send_header("Content-Length", str(end - start + 1))
+        self.send_header("Accept-Ranges", "bytes")
+        self.end_headers()
+        with f.open("rb") as fh:
+            fh.seek(start)
+            left = end - start + 1
+            while left > 0:
+                chunk = fh.read(min(262144, left))
+                if not chunk:
+                    break
+                self.wfile.write(chunk)
+                left -= len(chunk)
+
     def do_GET(self):
         path = self.path.split("?")[0]
         if path in ("/", "/index.html"):
@@ -244,7 +290,7 @@ class H(BaseHTTPRequestHandler):
                          ".m4a": "audio/mp4",
                          ".json": "application/json; charset=utf-8"
                          }.get(f.suffix, "text/plain; charset=utf-8")
-                return self._send(200, f.read_bytes(), ctype)
+                return self._send_file(f, ctype)
         self._send(404, json.dumps({"error": "not found"}))
 
     def do_POST(self):
