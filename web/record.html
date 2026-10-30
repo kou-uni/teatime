@@ -134,12 +134,14 @@ body[data-s=busy] #feed{display:flex}
 #feed .card.fail .ck,#feed .card.fail .cm{color:var(--red)}
 
 .links{display:none;flex-direction:column;align-items:flex-start;gap:16px}
-a.primary,a.ghost{min-height:44px;min-width:44px;padding:8px 0;font-size:15px;
+a.primary,a.ghost,button.ghost{min-height:44px;min-width:44px;padding:8px 0;font-size:15px;
   font-weight:650;text-decoration:none;transition:transform var(--tap-out) var(--settle)}
 a.primary:active,a.ghost:active{transform:scale(.96);transition-duration:var(--tap-in)}
 a.primary{width:100%;padding:16px;background:var(--main);color:var(--on-main);
   text-align:center;border-radius:10px}
-a.ghost{border-bottom:2px solid var(--ink)}
+a.ghost,button.ghost{border-bottom:2px solid var(--ink)}
+button.ghost{background:none;border-left:0;border-right:0;border-top:0;color:var(--ink);
+  align-self:flex-start}
 .foot{border-top:1px solid var(--rule);padding-top:8px;color:var(--muted);font-size:11px}
 .foot a{display:inline-flex;align-items:center;min-height:44px;min-width:44px;
   font-size:13px;font-weight:700;text-decoration:none;border-bottom:2px solid var(--ink)}
@@ -199,6 +201,7 @@ body[data-s=done] #links{display:flex}
 <nav class="links" id="links" aria-label="できたもの">
 <a class="primary" id="rep" href="#">できたものを見る</a>
 <a class="ghost" id="proto" href="#">プロトタイプを触る</a>
+<button class="ghost" id="rev" type="button" style="display:none">振り返りを録る</button>
 </nav>
 </main>
 <footer class="foot"><a href="/archive">これまでの議論を見る</a><p>議論の記録だけから作ります。<br>記録に無いことは「未入力」と出ます。</p></footer>
@@ -209,6 +212,8 @@ const $=(i)=>document.getElementById(i), go=$('go'), msg=$('msg'), rep=$('rep');
 const links=$('links'), proto=$('proto'), x=$('x');
 const feed=$('feed'), nEl=$('n'), nowEl=$('now'), remEl=$('rem'), bar=$('bar').firstElementChild;
 let jobId=null, quit=false, upload=null, arm=null;
+/* 本編（tea）と振り返り（review）は同じ画面・同じ山。送り先だけが違う。 */
+let mode='tea', curStem=null; const rev=$('rev');
 const fmt=(s)=>`${String(Math.floor(s/60)).padStart(2,'0')}:${String(s%60).padStart(2,'0')}`;
 const RM=matchMedia('(prefers-reduced-motion: reduce)');
 
@@ -266,9 +271,17 @@ function fly(from){
   },520);
 }
 
-go.onclick = async () => {
+go.onclick = () => {
   if (document.body.dataset.s === 'rec') return stop();
   if (document.body.dataset.s === 'busy') return;
+  startRec('tea');
+};
+/* 振り返り＝資料を見たあと、もう一度しゃべる。**ボタンで点を付けさせない。**
+   結構／もう一服のタップでは、捨てた理由が残らない。 */
+rev.onclick = () => { if (curStem) startRec('review'); };
+
+async function startRec(m) {
+  mode = m;
   try {
     stream = await navigator.mediaDevices.getUserMedia({audio:{
       echoCancellation:false, noiseSuppression:false, autoGainControl:true}});
@@ -283,9 +296,11 @@ go.onclick = async () => {
   mr.onstop = send;
   mr.start(4000);
   t0 = Date.now(); document.body.dataset.s='rec'; go.textContent='おわる';
-  msg.textContent='録音中。画面は見なくて大丈夫です。';
+  msg.textContent = mode==='review'
+    ? '品評を録っています。資料を見ながら、何を取って何を手放すかを話してください。'
+    : '録音中。画面は見なくて大丈夫です。';
   tick = setInterval(()=>$('t').textContent=fmt(Math.floor((Date.now()-t0)/1000)), 500);
-};
+}
 
 function stop(){ clearInterval(tick); mr.stop(); stream.getTracks().forEach(t=>t.stop());
   document.body.dataset.s='busy'; go.textContent='お茶へ'; buzz(18); }
@@ -295,9 +310,10 @@ async function send(){
   const ext = (mr.mimeType||'').includes('webm') ? 'webm' : 'm4a';
   msg.textContent='送っています…（'+Math.round(blob.size/1024)+'KB）';
   const fd = new FormData(); fd.append('audio', blob, 'rec.'+ext);
+  const url = mode==='review' ? '/review?stem='+encodeURIComponent(curStem) : '/upload';
   let r;
   upload = new AbortController();
-  try { r = await (await fetch('/upload', {method:'POST', body:fd, signal:upload.signal})).json(); }
+  try { r = await (await fetch(url, {method:'POST', body:fd, signal:upload.signal})).json(); }
   catch(e){ if (quit) return;
             msg.textContent='送れませんでした: '+e.message; document.body.dataset.s='idle';
             go.textContent='はじめる'; return; }
@@ -339,6 +355,9 @@ function drawFound(r){
     '捨てた案 '+r.abandonments+'（理由が言葉になっていない '+r.unverbalized+'）','','found');
   if (r.gaps!==undefined) pushCard('v:gaps','掴んだ','埋めるべき空白 '+r.gaps,'','found');
   if (r.assumptions!==undefined) pushCard('v:as','置いた','仮置き '+r.assumptions,'','found');
+  if (r.verdicts!==undefined) pushCard('v:vd','掴んだ','判定 '+r.verdicts,'','found');
+  if (r.released!==undefined) pushCard('v:rl','掴んだ','手放した価値 '+r.released,'','found');
+  if (r.reversals!==undefined) pushCard('v:rv','掴んだ','序列の反転 '+r.reversals,'','found');
 }
 
 x.onclick = () => {
@@ -381,9 +400,20 @@ async function poll(id){
     return setTimeout(()=>poll(id), 2000);
   if (r.state === 'done'){
     bar.style.width='100%'; nowEl.textContent=''; remEl.textContent='';
-    msg.textContent='できました。';
-    rep.href=r.url; proto.href=r.proto||'#';
-    proto.style.display = r.proto ? 'block':'none';
+    if (mode==='review'){
+      msg.textContent='品評を置きました。';
+      rep.href=r.url; rep.textContent='振り返りを読む';
+      proto.href=r.video||'#'; proto.textContent='振り返りの動画';
+      proto.style.display = r.video ? 'block':'none';
+      rev.style.display='none';
+    } else {
+      msg.textContent='できました。';
+      rep.href=r.url; rep.textContent='できたものを見る';
+      proto.href=r.proto||'#'; proto.textContent='プロトタイプを触る';
+      proto.style.display = r.proto ? 'block':'none';
+      curStem = r.stem||null;
+      rev.style.display = curStem ? 'block':'none';
+    }
     links.style.display='flex';
     document.body.dataset.s='idle'; go.textContent='もう一度'; $('t').textContent='';
     try{ localStorage.setItem('tt.done','1'); }catch(e){}

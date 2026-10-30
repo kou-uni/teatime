@@ -45,6 +45,8 @@ PARTS = [
     ("{s}.html", "レポート", "btn"),
     ("{s}.proto.html", "プロトタイプ", "btn2"),
     ("{s}.mp4", "動画", "btn2"),
+    ("{s}.review.md", "振り返り", "btn2"),
+    ("{s}.review.mp4", "振り返りの動画", "btn2"),
     ("{s}.txt", "文字起こし", "btn2"),
     ("{s}.pitch.md", "投資家向け", "btn2"),
     ("{s}.product.md", "プロダクト", "btn2"),

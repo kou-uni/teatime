@@ -40,6 +40,14 @@ STEPS = [
 ]
 
 
+# **振り返り（品評）の工程。** 本編とは別の山。戻ってきた人が置いていくものを取る。
+REVIEW_STEPS = [
+    ("rtranscribe", "品評の文字起こし"),
+    ("rextract", "手放した価値と序列の反転"),
+    ("rvideo", "振り返りの動画"),
+]
+
+
 class Cancelled(Exception):
     """「やっぱやめる」。走っている1歩は止められないので、**次の歩の手前で止まる。**"""
 
@@ -126,7 +134,7 @@ def _work(job_id, audio):
             raise Cancelled()
         finish()
         job.update(state="done", url=f"/out/{audio.stem}.html",
-                   proto=proto["url"], video=mp4,
+                   proto=proto["url"], video=mp4, stem=audio.stem,
                    assumptions=len(proto["assumptions"]))
     except Cancelled:
         _discard(audio)
@@ -134,6 +142,47 @@ def _work(job_id, audio):
             if s_["state"] in ("run", "wait"):
                 s_["state"] = "cancel"
         job.update(state="cancelled")
+    except Exception as exc:  # noqa: BLE001
+        traceback.print_exc()
+        for s_ in steps:
+            if s_["state"] == "run":
+                s_["state"] = "fail"
+        job.update(state="error", error=f"{type(exc).__name__}: {exc}")
+
+
+def _review_work(job_id, stem, audio):
+    """**品評は本編と同じ画面に積む。** 別の数にしない（横串の1数値）。"""
+    from . import model, review
+    model.reset_usage()
+    job = JOBS[job_id]
+    steps = [{"key": k, "label": l, "state": "wait", "sec": 0} for k, l in REVIEW_STEPS]
+    job["steps"] = steps
+    clock = {"t": time.time()}
+
+    def step(key):
+        now = time.time()
+        for s_ in steps:
+            if s_["state"] == "run":
+                s_["state"] = "done"
+                s_["sec"] = int(now - clock["t"])
+        for s_ in steps:
+            if s_["key"] == key:
+                s_["state"] = "run"
+                clock["t"] = now
+                job["state"] = key
+                return
+
+    try:
+        r = review.run(OUT / stem, audio, on_step=step)
+        now = time.time()
+        for s_ in steps:
+            if s_["state"] == "run":
+                s_["state"] = "done"
+                s_["sec"] = int(now - clock["t"])
+        job.update(state="done", url=f"/out/{stem}.review.md", stem=stem,
+                   video=f"/out/{r['mp4'].name}" if r["mp4"] else None,
+                   verdicts=r["verdicts"], released=r["released"],
+                   reversals=r["reversals"])
     except Exception as exc:  # noqa: BLE001
         traceback.print_exc()
         for s_ in steps:
@@ -185,6 +234,7 @@ class H(BaseHTTPRequestHandler):
             if f.exists() and f.parent == OUT:
                 ctype = {".html": "text/html; charset=utf-8",
                          ".mp4": "video/mp4",
+                         ".m4a": "audio/mp4",
                          ".json": "application/json; charset=utf-8"
                          }.get(f.suffix, "text/plain; charset=utf-8")
                 return self._send(200, f.read_bytes(), ctype)
@@ -204,7 +254,26 @@ class H(BaseHTTPRequestHandler):
             elif job.get("state") != "cancelled":
                 job["cancel"] = True
             return self._send(200, json.dumps({"state": job.get("state")}))
-        if self.path != "/upload":
+        path = self.path.split("?")[0]
+        if path == "/review":
+            q = dict(p.split("=", 1) for p in self.path.split("?", 1)[-1].split("&") if "=" in p)
+            stem = re.sub(r"[^A-Za-z0-9_.-]", "", q.get("stem", ""))
+            if not stem or not (OUT / f"{stem}.extract.json").exists():
+                return self._send(404, json.dumps({"error": "その回がありません"}))
+            filename, blob = parse_multipart_file(
+                self.rfile.read(int(self.headers["Content-Length"])),
+                self.headers["Content-Type"])
+            if blob is None:
+                return self._send(400, json.dumps({"error": "音声がありません"}))
+            ext = pathlib.Path(filename or "rec.m4a").suffix or ".m4a"
+            dest = OUT / f"{stem}.review{ext}"
+            dest.write_bytes(blob)
+            job_id = f"{stem}.review"
+            JOBS[job_id] = {"state": "queued"}
+            threading.Thread(target=_review_work, args=(job_id, stem, dest),
+                             daemon=True).start()
+            return self._send(200, json.dumps({"id": job_id, "file": dest.name}))
+        if path != "/upload":
             return self._send(404, json.dumps({"error": "not found"}))
         filename, blob = parse_multipart_file(
             self.rfile.read(int(self.headers["Content-Length"])),

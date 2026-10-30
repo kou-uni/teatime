@@ -61,7 +61,10 @@ def script(structured, docs):
     return model.ask_json(SYSTEM, PROMPT.format(core=core))["slides"]
 
 
-def slide_png(s, idx, total, dest):
+FOOT = "teatime — 議論の記録だけから作っています"
+
+
+def slide_png(s, idx, total, dest, foot=FOOT):
     img = Image.new("RGB", (W, H), BG)
     d = ImageDraw.Draw(img)
     f_t, f_b, f_s = (ImageFont.truetype(FONT, 86),
@@ -75,7 +78,7 @@ def slide_png(s, idx, total, dest):
             d.text((150, y), part, font=f_b, fill=FG)
             y += 86
         y += 18
-    d.text((150, H - 92), f"teatime — 議論の記録だけから作っています", font=f_s, fill=MUT)
+    d.text((150, H - 92), foot, font=f_s, fill=MUT)
     d.text((W - 230, H - 92), f"{idx}/{total}", font=f_s, fill=MUT)
     img.save(dest)
 
@@ -120,18 +123,21 @@ def tts(text, dest):
     return "elevenlabs"
 
 
-def build(stem_dir, structured, docs):
-    out = pathlib.Path(stem_dir)
-    work = out.parent / f"{out.name}.video"
+def assemble(slides, work, dest, foot=FOOT):
+    """スライドの配列を1本の mp4 にする。**台本の作り方には関知しない。**
+
+    振り返り（teatime.review）も同じ組み立てを使う。読み上げに何を使ったかを返す。
+    """
+    work = pathlib.Path(work)
     work.mkdir(exist_ok=True)
-    slides = script(structured, docs)
     (work / "script.json").write_text(
         json.dumps(slides, ensure_ascii=False, indent=2), encoding="utf-8")
 
     parts = []
+    voice = None
     for i, s in enumerate(slides, 1):
         png, mp3, mp4 = work / f"{i:02d}.png", work / f"{i:02d}.mp3", work / f"{i:02d}.mp4"
-        slide_png(s, i, len(slides), png)
+        slide_png(s, i, len(slides), png, foot)
         voice = tts(s["narration"], mp3)
         subprocess.run(
             ["ffmpeg", "-hide_banner", "-loglevel", "error", "-y",
@@ -143,13 +149,20 @@ def build(stem_dir, structured, docs):
 
     lst = work / "parts.txt"
     lst.write_text("".join(f"file '{p.name}'\n" for p in parts), encoding="utf-8")
-    dest = out.parent / f"{out.name}.mp4"
     subprocess.run(["ffmpeg", "-hide_banner", "-loglevel", "error", "-y",
                     "-f", "concat", "-safe", "0", "-i", str(lst),
                     "-c", "copy", str(dest)], check=True)
-    (work / "voice.txt").write_text(voice, encoding="utf-8")
+    (work / "voice.txt").write_text(voice or "", encoding="utf-8")
     print(f"読み上げ: {voice}（ElevenLabs を使うには ELEVENLABS_API_KEY が要ります）"
-          if voice == "say" else "読み上げ: elevenlabs")
+          if voice == "say" else f"読み上げ: {voice}")
+    return voice
+
+
+def build(stem_dir, structured, docs):
+    """議論そのものの解説動画。**振り返りの動画は teatime.review にある。**"""
+    out = pathlib.Path(stem_dir)
+    dest = out.parent / f"{out.name}.mp4"
+    assemble(script(structured, docs), out.parent / f"{out.name}.video", dest)
     return dest
 
 
